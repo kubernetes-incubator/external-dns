@@ -146,6 +146,8 @@ type AWSProvider struct {
 	zoneTagFilter provider.ZoneTagFilter
 	preferCNAME   bool
 	zonesCache    *zonesListCache
+	// queue for collecting changes to submit them in the next iteration, but after all other changes
+	failedChangesQueue map[string][]*route53.Change
 }
 
 // AWSConfig contains configuration to create a new AWS provider.
@@ -202,6 +204,7 @@ func NewAWSProvider(awsConfig AWSConfig) (*AWSProvider, error) {
 		preferCNAME:          awsConfig.PreferCNAME,
 		dryRun:               awsConfig.DryRun,
 		zonesCache:           &zonesListCache{duration: awsConfig.ZoneCacheDuration},
+		failedChangesQueue:   make(map[string][]*route53.Change),
 	}
 
 	return provider, nil
@@ -494,9 +497,30 @@ func (p *AWSProvider) submitChanges(ctx context.Context, changes []*route53.Chan
 	for z, cs := range changesByZone {
 		var failedUpdate bool
 
-		batchCs := batchChangeSet(cs, p.batchChangeSize)
+		// group changes into new changes and into changes that failed in a previous iteration and are retried
+		var newChanges, retriedChanges []*route53.Change
+		for _, c := range cs {
+			found := false
+			if p.failedChangesQueue[z] != nil {
+				for _, failedChange := range p.failedChangesQueue[z] {
+					if c == failedChange {
+						retriedChanges = append(retriedChanges, c)
+						found = true
+					}
+				}
+				p.failedChangesQueue[z] = nil // clear the queue
+			}
+			if !found {
+				newChanges = append(newChanges, c)
+			}
+		}
+		batchCs := append(batchChangeSet(newChanges, p.batchChangeSize), batchChangeSet(retriedChanges, p.batchChangeSize)...)
 
 		for i, b := range batchCs {
+			if len(b) == 0 {
+				continue
+			}
+
 			for _, c := range b {
 				log.Infof("Desired change: %s %s %s [Id: %s]", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, z)
 			}
@@ -509,13 +533,56 @@ func (p *AWSProvider) submitChanges(ctx context.Context, changes []*route53.Chan
 					},
 				}
 
+				successfulChanges := 0
+
 				if _, err := p.client.ChangeResourceRecordSetsWithContext(ctx, params); err != nil {
-					log.Errorf("Failure in zone %s [Id: %s]", aws.StringValue(zones[z].Name), z)
+					log.Errorf("Failure in zone %s [Id: %s] when submitting change batch", aws.StringValue(zones[z].Name), z)
 					log.Error(err) //TODO(ideahitme): consider changing the interface in cases when this error might be a concern for other components
-					failedUpdate = true
+
+					if len(b) > 1 {
+						log.Error("Trying to submit changes one-by-one instead")
+
+						// group changes by name
+						groupedBatch := map[string][]*route53.Change{}
+						for _, c := range b {
+							name := aws.StringValue(c.ResourceRecordSet.Name)
+							if groupedBatch[name] == nil {
+								groupedBatch[name] = []*route53.Change{c}
+							} else {
+								groupedBatch[name] = append(groupedBatch[name], c)
+							}
+						}
+
+						for _, groupedChanges := range groupedBatch {
+							for _, c := range groupedChanges {
+								log.Infof("Desired change: %s %s %s [Id: %s]", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, z)
+							}
+							params.ChangeBatch = &route53.ChangeBatch{
+								Changes: groupedChanges,
+							}
+							if _, err := p.client.ChangeResourceRecordSetsWithContext(ctx, params); err != nil {
+								failedUpdate = true
+								log.Error("Failed submitting change, it will be retried in a separate change batch in the next iteration")
+								if _, ok := p.failedChangesQueue[z]; !ok {
+									p.failedChangesQueue[z] = groupedChanges
+								} else {
+									p.failedChangesQueue[z] = append(p.failedChangesQueue[z], groupedChanges...)
+								}
+							} else {
+								log.Info("Change successful")
+								successfulChanges = successfulChanges + len(groupedChanges)
+							}
+						}
+					} else {
+						failedUpdate = true
+					}
 				} else {
+					successfulChanges = len(b)
+				}
+
+				if successfulChanges > 0 {
 					// z is the R53 Hosted Zone ID already as aws.StringValue
-					log.Infof("%d record(s) in zone %s [Id: %s] were successfully updated", len(b), aws.StringValue(zones[z].Name), z)
+					log.Infof("%d record(s) in zone %s [Id: %s] were successfully updated", successfulChanges, aws.StringValue(zones[z].Name), z)
 				}
 
 				if i != len(batchCs)-1 {
