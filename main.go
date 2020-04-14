@@ -241,8 +241,9 @@ func main() {
 				SSLVerify:    cfg.InfobloxSSLVerify,
 				View:         cfg.InfobloxView,
 				MaxResults:   cfg.InfobloxMaxResults,
+				FQDNRegEx:    cfg.InfobloxFQDNRegEx,
+				NameRegEx:    cfg.InfobloxNameRegEx,
 				DryRun:       cfg.DryRun,
-				FQDNRexEx:    cfg.InfobloxFQDNRegEx,
 			},
 		)
 	case "dyn":

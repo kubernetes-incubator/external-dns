@@ -716,8 +716,10 @@ func newEndpointWithOwner(dnsName, target, recordType, ownerID string) *endpoint
 func newEndpointWithOwnerAndLabels(dnsName, target, recordType, ownerID string, labels endpoint.Labels) *endpoint.Endpoint {
 	e := endpoint.NewEndpoint(dnsName, recordType, target)
 	e.Labels[endpoint.OwnerLabelKey] = ownerID
-	for k, v := range labels {
-		e.Labels[k] = v
+	if labels != nil { //nolint:gosimple
+		for k, v := range labels {
+			e.Labels[k] = v
+		}
 	}
 	return e
 }

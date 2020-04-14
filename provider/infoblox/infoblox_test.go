@@ -542,18 +542,40 @@ func TestExtendedRequestFDQDRegExBuilder(t *testing.T) {
 		Version:  "2.3.1",
 	}
 
-	requestBuilder := NewExtendedRequestBuilder(0, "^staging.*test.com$")
+	requestBuilder := NewExtendedRequestBuilder(0, "^staging\\.*test\\.com$", "")
 	requestBuilder.Init(hostConfig)
 
 	obj := ibclient.NewZoneAuth(ibclient.ZoneAuth{})
 
 	req, _ := requestBuilder.BuildRequest(ibclient.GET, obj, "", ibclient.QueryParams{})
 
-	assert.True(t, req.URL.Query().Get("fqdn~") == "^staging.*test.com$")
+	assert.True(t, req.URL.Query().Get("fqdn~") == "^staging\\.*test\\.com$")
 
 	req, _ = requestBuilder.BuildRequest(ibclient.CREATE, obj, "", ibclient.QueryParams{})
 
 	assert.True(t, req.URL.Query().Get("fqdn~") == "")
+}
+func TestExtendedRequestNameRegExBuilder(t *testing.T) {
+	hostConfig := ibclient.HostConfig{
+		Host:     "localhost",
+		Port:     "8080",
+		Username: "user",
+		Password: "abcd",
+		Version:  "2.3.1",
+	}
+
+	requestBuilder := NewExtendedRequestBuilder(0, "", "*example*")
+	requestBuilder.Init(hostConfig)
+
+	obj := ibclient.NewZoneAuth(ibclient.ZoneAuth{})
+
+	req, _ := requestBuilder.BuildRequest(ibclient.GET, obj, "", ibclient.QueryParams{})
+
+	assert.True(t, req.URL.Query().Get("name~") == "*example*")
+
+	req, _ = requestBuilder.BuildRequest(ibclient.CREATE, obj, "", ibclient.QueryParams{})
+
+	assert.True(t, req.URL.Query().Get("name~") == "")
 }
 func TestExtendedRequestMaxResultsBuilder(t *testing.T) {
 	hostConfig := ibclient.HostConfig{
@@ -564,7 +586,7 @@ func TestExtendedRequestMaxResultsBuilder(t *testing.T) {
 		Version:  "2.3.1",
 	}
 
-	requestBuilder := NewExtendedRequestBuilder(54321, "")
+	requestBuilder := NewExtendedRequestBuilder(54321, "", "")
 	requestBuilder.Init(hostConfig)
 
 	obj := ibclient.NewRecordCNAME(ibclient.RecordCNAME{Zone: "foo.bar.com"})

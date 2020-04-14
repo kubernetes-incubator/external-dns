@@ -107,6 +107,7 @@ type Config struct {
 	InfobloxView                      string
 	InfobloxMaxResults                int
 	InfobloxFQDNRegEx                 string
+	InfobloxNameRegEx                 string
 	DynCustomerName                   string
 	DynUsername                       string
 	DynPassword                       string `secure:"yes"`
@@ -232,6 +233,7 @@ var defaultConfig = &Config{
 	InfobloxView:                "",
 	InfobloxMaxResults:          0,
 	InfobloxFQDNRegEx:           "",
+	InfobloxNameRegEx:           "",
 	OCIConfigFile:               "/etc/kubernetes/oci.yaml",
 	InMemoryZones:               []string{},
 	OVHEndpoint:                 "ovh-eu",
@@ -415,7 +417,8 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("infoblox-ssl-verify", "When using the Infoblox provider, specify whether to verify the SSL certificate (default: true, disable with --no-infoblox-ssl-verify)").Default(strconv.FormatBool(defaultConfig.InfobloxSSLVerify)).BoolVar(&cfg.InfobloxSSLVerify)
 	app.Flag("infoblox-view", "DNS view (default: \"\")").Default(defaultConfig.InfobloxView).StringVar(&cfg.InfobloxView)
 	app.Flag("infoblox-max-results", "Add _max_results as query parameter to the URL on all API requests. The default is 0 which means _max_results is not set and the default of the server is used.").Default(strconv.Itoa(defaultConfig.InfobloxMaxResults)).IntVar(&cfg.InfobloxMaxResults)
-	app.Flag("infoblox-fqdn-regex", "Apply this regular expression as a filter for obtaining zone_auth objects. This is disabled by default.").Default(defaultConfig.InfobloxFQDNRegEx).StringVar(&cfg.InfobloxFQDNRegEx)
+	app.Flag("infoblox-fqdn-regex", "Apply this regular expression as a filter for obtaining zone_auth objects (optional).").Default(defaultConfig.InfobloxFQDNRegEx).StringVar(&cfg.InfobloxFQDNRegEx)
+	app.Flag("infoblox-name-regex", "Apply this regular expression as a filter for obtaining name record objects (optional).").Default(defaultConfig.InfobloxNameRegEx).StringVar(&cfg.InfobloxNameRegEx)
 	app.Flag("dyn-customer-name", "When using the Dyn provider, specify the Customer Name").Default("").StringVar(&cfg.DynCustomerName)
 	app.Flag("dyn-username", "When using the Dyn provider, specify the Username").Default("").StringVar(&cfg.DynUsername)
 	app.Flag("dyn-password", "When using the Dyn provider, specify the password").Default("").StringVar(&cfg.DynPassword)
