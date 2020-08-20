@@ -174,6 +174,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 		labels                   map[string]string
 		annotations              map[string]string
 		clusterIP                string
+		ports                    []v1.ServicePort
 		lbs                      []string
 		serviceTypesFilter       []string
 		expected                 []*endpoint.Endpoint
@@ -193,6 +194,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -212,6 +214,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -233,6 +236,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -256,6 +260,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -277,6 +282,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"1.2.3.4",
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -296,6 +302,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -318,6 +325,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -342,6 +350,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org., bar.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -368,6 +377,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org., bar.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -392,6 +402,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org., bar.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -416,6 +427,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org, bar.example.org",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -440,6 +452,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"lb.example.com"}, // Kubernetes omits the trailing dot
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -463,6 +476,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org", // Trailing dot is omitted
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4", "lb.example.com"}, // Kubernetes omits the trailing dot
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -488,6 +502,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey:   "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -512,6 +527,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey:   "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -533,6 +549,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -556,6 +573,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -577,6 +595,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -601,6 +620,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"service.beta.kubernetes.io/external-traffic": "OnlyLocal",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -625,6 +645,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"service.beta.kubernetes.io/external-traffic": "SomethingElse",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -647,6 +668,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"service.beta.kubernetes.io/external-traffic": "OnlyLocal",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -669,6 +691,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"service.beta.kubernetes.io/external-traffic": "Global",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -693,6 +716,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"service.beta.kubernetes.io/external-traffic": "OnlyLocal",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -714,6 +738,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -735,10 +760,41 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4", "8.8.8.8"},
 			[]string{},
 			[]*endpoint.Endpoint{
 				{DNSName: "foo.example.org", Targets: endpoint.Targets{"1.2.3.4", "8.8.8.8"}},
+			},
+			false,
+		},
+		{
+			"multiple named ports return a single endpoint and one SRV endpoints for each named port",
+			"",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeLoadBalancer,
+			"",
+			"",
+			false,
+			false,
+			map[string]string{},
+			map[string]string{
+				hostnameAnnotationKey: "foo.example.org.",
+			},
+			"",
+			[]v1.ServicePort{
+				{Name: "http", Port: 8888, NodePort: 30192},
+				{Name: "https", Port: 8889, NodePort: 30193, Protocol: "UDP"},
+				{Port: 8890, NodePort: 30194},
+			},
+			[]string{"1.2.3.4"},
+			[]string{},
+			[]*endpoint.Endpoint{
+				{DNSName: "_http._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "_https._udp.foo.example.org", Targets: endpoint.Targets{"0 50 30193 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "foo.example.org", Targets: endpoint.Targets{"1.2.3.4"}},
 			},
 			false,
 		},
@@ -758,6 +814,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"zalando.org/dnsname": "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -779,6 +836,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"zalando.org/dnsname": "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -804,6 +862,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"domainName": "foo.example.org., bar.example.org",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -826,6 +885,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4", "elb.com"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -850,6 +910,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4", "elb.com"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -874,6 +935,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				"zalando.org/dnsname": "mate.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -895,6 +957,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{},
@@ -916,6 +979,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -940,6 +1004,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				ttlAnnotationKey:      "foo",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -964,6 +1029,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				ttlAnnotationKey:      "10",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -988,6 +1054,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				ttlAnnotationKey:      "1m",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -1012,6 +1079,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				ttlAnnotationKey:      "-10",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{},
 			[]*endpoint.Endpoint{
@@ -1035,6 +1103,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{string(v1.ServiceTypeLoadBalancer)},
 			[]*endpoint.Endpoint{
@@ -1058,6 +1127,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"",
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{"1.2.3.4"},
 			[]string{string(v1.ServiceTypeLoadBalancer)},
 			[]*endpoint.Endpoint{},
@@ -1082,6 +1152,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					Type:      tc.svcType,
 					ClusterIP: tc.clusterIP,
+					Ports:     tc.ports,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   tc.svcNamespace,
@@ -1154,6 +1225,7 @@ func TestClusterIpServices(t *testing.T) {
 		labels                   map[string]string
 		annotations              map[string]string
 		clusterIP                string
+		ports                    []v1.ServicePort
 		lbs                      []string
 		expected                 []*endpoint.Endpoint
 		expectError              bool
@@ -1173,6 +1245,7 @@ func TestClusterIpServices(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"1.2.3.4",
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]*endpoint.Endpoint{
 				{DNSName: "foo.example.org", Targets: endpoint.Targets{"1.2.3.4"}},
@@ -1194,6 +1267,7 @@ func TestClusterIpServices(t *testing.T) {
 				hostnameAnnotationKey: "foo.example.org.",
 			},
 			"1.2.3.4",
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]*endpoint.Endpoint{},
 			false,
@@ -1211,6 +1285,7 @@ func TestClusterIpServices(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			"4.5.6.7",
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]*endpoint.Endpoint{
 				{DNSName: "foo.bar.example.com", Targets: endpoint.Targets{"4.5.6.7"}},
@@ -1230,8 +1305,37 @@ func TestClusterIpServices(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			v1.ClusterIPNone,
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]*endpoint.Endpoint{},
+			false,
+		},
+		{
+			"annotated ClusterIp services with multiple named ports return an endpoint with Cluster IP and multiple SRV endpoints",
+			"",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{},
+			map[string]string{
+				hostnameAnnotationKey: "foo.example.org.",
+			},
+			"1.2.3.4",
+			[]v1.ServicePort{
+				{Name: "http", Port: 8888},
+				{Name: "https", Port: 8889, Protocol: "UDP"},
+				{Port: 8890},
+			},
+			[]string{},
+			[]*endpoint.Endpoint{
+				{DNSName: "_http._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 8888 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "_https._udp.foo.example.org", Targets: endpoint.Targets{"0 50 8889 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "foo.example.org", Targets: endpoint.Targets{"1.2.3.4"}},
+			},
 			false,
 		},
 	} {
@@ -1253,6 +1357,7 @@ func TestClusterIpServices(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					Type:      tc.svcType,
 					ClusterIP: tc.clusterIP,
+					Ports:     tc.ports,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   tc.svcNamespace,
@@ -1314,6 +1419,7 @@ func TestNodePortServices(t *testing.T) {
 		ignoreHostnameAnnotation bool
 		labels                   map[string]string
 		annotations              map[string]string
+		ports                    []v1.ServicePort
 		lbs                      []string
 		expected                 []*endpoint.Endpoint
 		expectError              bool
@@ -1337,9 +1443,10 @@ func TestNodePortServices(t *testing.T) {
 			map[string]string{
 				hostnameAnnotationKey: "foo.example.org.",
 			},
+			[]v1.ServicePort{{Name: "http", Port: 8888, NodePort: 30192}},
 			nil,
 			[]*endpoint.Endpoint{
-				{DNSName: "_30192._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "_http._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
 				{DNSName: "foo.example.org", Targets: endpoint.Targets{"54.10.11.1", "54.10.11.2"}, RecordType: endpoint.RecordTypeA},
 			},
 			false,
@@ -1383,6 +1490,7 @@ func TestNodePortServices(t *testing.T) {
 			map[string]string{
 				hostnameAnnotationKey: "foo.example.org.",
 			},
+			[]v1.ServicePort{{Name: "http", Port: 8888, NodePort: 30192}},
 			nil,
 			[]*endpoint.Endpoint{},
 			false,
@@ -1424,9 +1532,10 @@ func TestNodePortServices(t *testing.T) {
 			false,
 			map[string]string{},
 			map[string]string{},
+			[]v1.ServicePort{{Name: "http", Port: 8888, NodePort: 30192}},
 			nil,
 			[]*endpoint.Endpoint{
-				{DNSName: "_30192._tcp.foo.bar.example.com", Targets: endpoint.Targets{"0 50 30192 foo.bar.example.com"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "_http._tcp.foo.bar.example.com", Targets: endpoint.Targets{"0 50 30192 foo.bar.example.com"}, RecordType: endpoint.RecordTypeSRV},
 				{DNSName: "foo.bar.example.com", Targets: endpoint.Targets{"54.10.11.1", "54.10.11.2"}, RecordType: endpoint.RecordTypeA},
 			},
 			false,
@@ -1470,9 +1579,10 @@ func TestNodePortServices(t *testing.T) {
 			map[string]string{
 				hostnameAnnotationKey: "foo.example.org.",
 			},
+			[]v1.ServicePort{{Name: "http", Port: 8888, NodePort: 30192}},
 			nil,
 			[]*endpoint.Endpoint{
-				{DNSName: "_30192._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "_http._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
 				{DNSName: "foo.example.org", Targets: endpoint.Targets{"10.0.1.1", "10.0.1.2"}, RecordType: endpoint.RecordTypeA},
 			},
 			false,
@@ -1514,9 +1624,10 @@ func TestNodePortServices(t *testing.T) {
 			map[string]string{
 				hostnameAnnotationKey: "foo.example.org.",
 			},
+			[]v1.ServicePort{{Name: "http", Port: 8888, NodePort: 30192}},
 			nil,
 			[]*endpoint.Endpoint{
-				{DNSName: "_30192._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "_http._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
 				{DNSName: "foo.example.org", Targets: endpoint.Targets{"54.10.11.2"}, RecordType: endpoint.RecordTypeA},
 			},
 			false,
@@ -1544,6 +1655,58 @@ func TestNodePortServices(t *testing.T) {
 			[]string{"pod-0"},
 			[]int{1},
 			[]v1.PodPhase{v1.PodRunning},
+		},
+		{
+			"annotated NodePort services with multiple named ports return an endpoint with IP addresses of the cluster's nodes and multiple SRV endpoints",
+			"",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeNodePort,
+			v1.ServiceExternalTrafficPolicyTypeCluster,
+			"",
+			"",
+			false,
+			map[string]string{},
+			map[string]string{
+				hostnameAnnotationKey: "foo.example.org.",
+			},
+			[]v1.ServicePort{
+				{Name: "http", Port: 8888, NodePort: 30192},
+				{Name: "https", Port: 8889, NodePort: 30193, Protocol: "UDP"},
+				{Port: 8890, NodePort: 30194},
+			},
+			nil,
+			[]*endpoint.Endpoint{
+				{DNSName: "_http._tcp.foo.example.org", Targets: endpoint.Targets{"0 50 30192 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "_https._udp.foo.example.org", Targets: endpoint.Targets{"0 50 30193 foo.example.org"}, RecordType: endpoint.RecordTypeSRV},
+				{DNSName: "foo.example.org", Targets: endpoint.Targets{"54.10.11.1", "54.10.11.2"}, RecordType: endpoint.RecordTypeA},
+			},
+			false,
+			[]*v1.Node{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Type: v1.NodeExternalIP, Address: "54.10.11.1"},
+						{Type: v1.NodeInternalIP, Address: "10.0.1.1"},
+					},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node2",
+				},
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Type: v1.NodeExternalIP, Address: "54.10.11.2"},
+						{Type: v1.NodeInternalIP, Address: "10.0.1.2"},
+					},
+				},
+			}},
+			[]string{},
+			[]int{},
+			[]v1.PodPhase{},
 		},
 	} {
 		t.Run(tc.title, func(t *testing.T) {
@@ -1585,11 +1748,7 @@ func TestNodePortServices(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					Type:                  tc.svcType,
 					ExternalTrafficPolicy: tc.svcTrafficPolicy,
-					Ports: []v1.ServicePort{
-						{
-							NodePort: 30192,
-						},
-					},
+					Ports:                 tc.ports,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   tc.svcNamespace,
@@ -1647,6 +1806,7 @@ func TestHeadlessServices(t *testing.T) {
 		clusterIP                string
 		podIPs                   []string
 		selector                 map[string]string
+		ports                    []v1.ServicePort
 		lbs                      []string
 		podnames                 []string
 		hostnames                []string
@@ -1673,6 +1833,7 @@ func TestHeadlessServices(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -1703,6 +1864,7 @@ func TestHeadlessServices(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -1730,6 +1892,7 @@ func TestHeadlessServices(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -1760,6 +1923,7 @@ func TestHeadlessServices(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -1789,6 +1953,7 @@ func TestHeadlessServices(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -1819,6 +1984,7 @@ func TestHeadlessServices(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"", ""},
@@ -1847,12 +2013,64 @@ func TestHeadlessServices(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1", "foo-3"},
 			[]string{"", "", ""},
 			[]bool{true, true, true},
 			false,
 			[]*endpoint.Endpoint{
+				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
+			},
+			false,
+		},
+		{
+			"annotated Headless services with multiple named ports return endpoints for each selected Pod and SRV endpoints for each ports",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+			},
+			v1.ClusterIPNone,
+			[]string{"1.1.1.1", "1.1.1.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]v1.ServicePort{
+				{Name: "http", Port: 8888},
+				{Name: "https", Port: 8889, Protocol: "UDP"},
+				{Port: 8890},
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true, true},
+			false,
+			[]*endpoint.Endpoint{
+				{
+					DNSName: "_http._tcp.service.example.org",
+					Targets: endpoint.Targets{
+						"0 50 8888 foo-0.service.example.org",
+						"0 50 8888 foo-1.service.example.org",
+					},
+					RecordType: endpoint.RecordTypeSRV,
+				},
+				{
+					DNSName: "_https._udp.service.example.org",
+					Targets: endpoint.Targets{
+						"0 50 8889 foo-0.service.example.org",
+						"0 50 8889 foo-1.service.example.org",
+					},
+					RecordType: endpoint.RecordTypeSRV,
+				},
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
+				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
 				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
 			},
 			false,
@@ -1867,6 +2085,7 @@ func TestHeadlessServices(t *testing.T) {
 					Type:                     tc.svcType,
 					ClusterIP:                tc.clusterIP,
 					Selector:                 tc.selector,
+					Ports:                    tc.ports,
 					PublishNotReadyAddresses: tc.publishNotReadyAddresses,
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -1976,6 +2195,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 		clusterIP                string
 		hostIPs                  []string
 		selector                 map[string]string
+		ports                    []v1.ServicePort
 		lbs                      []string
 		podnames                 []string
 		hostnames                []string
@@ -2002,6 +2222,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -2032,6 +2253,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -2059,6 +2281,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -2089,6 +2312,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -2118,6 +2342,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"foo-0", "foo-1"},
@@ -2148,12 +2373,64 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 			map[string]string{
 				"component": "foo",
 			},
+			[]v1.ServicePort{{Port: 8888, NodePort: 30192}},
 			[]string{},
 			[]string{"foo-0", "foo-1"},
 			[]string{"", ""},
 			[]bool{true, true},
 			false,
 			[]*endpoint.Endpoint{
+				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
+			},
+			false,
+		},
+		{
+			"annotated Headless services with multiple named ports return endpoints for each selected Pod and SRV endpoints for each ports",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+			},
+			v1.ClusterIPNone,
+			[]string{"1.1.1.1", "1.1.1.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]v1.ServicePort{
+				{Name: "http", Port: 8888},
+				{Name: "https", Port: 8889, Protocol: "UDP"},
+				{Port: 8890},
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true,true},
+			false,
+			[]*endpoint.Endpoint{
+				{
+					DNSName: "_http._tcp.service.example.org",
+					Targets: endpoint.Targets{
+						"0 50 8888 foo-0.service.example.org",
+						"0 50 8888 foo-1.service.example.org",
+					},
+					RecordType: endpoint.RecordTypeSRV,
+				},
+				{
+					DNSName: "_https._udp.service.example.org",
+					Targets: endpoint.Targets{
+						"0 50 8889 foo-0.service.example.org",
+						"0 50 8889 foo-1.service.example.org",
+					},
+					RecordType: endpoint.RecordTypeSRV,
+				},
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
+				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
 				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
 			},
 			false,
@@ -2168,6 +2445,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 					Type:                     tc.svcType,
 					ClusterIP:                tc.clusterIP,
 					Selector:                 tc.selector,
+					Ports:                    tc.ports,
 					PublishNotReadyAddresses: tc.publishNotReadyAddresses,
 				},
 				ObjectMeta: metav1.ObjectMeta{
