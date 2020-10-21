@@ -15,6 +15,7 @@ code.cloudfoundry.org/gofileutils v0.0.0-20170111115228-4d0c80011a0f/go.mod h1:s
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 git.blindage.org/21h/hcloud-dns v0.0.0-20200525170043-def10a4a28e0 h1:kdxglEveTcqIG5zEPdQ0Y5KctnIGR7zXsQCQakoTNxU=
 git.blindage.org/21h/hcloud-dns v0.0.0-20200525170043-def10a4a28e0/go.mod h1:n26Twiii5jhkMC+Ocz/s8R73cBBcXRIwyTqQ+6bOZGo=
+git.blindage.org/21h/hcloud-dns v0.0.0-20200807003420-f768ffe03f8d/go.mod h1:n26Twiii5jhkMC+Ocz/s8R73cBBcXRIwyTqQ+6bOZGo=
 github.com/Azure/azure-sdk-for-go v45.1.0+incompatible h1:kxtaPD8n2z5Za+9e3sKsYG2IX6PG2R6VXtgS7gAbh3A=
 github.com/Azure/azure-sdk-for-go v45.1.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=

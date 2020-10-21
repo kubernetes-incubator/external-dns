@@ -59,6 +59,8 @@ type serviceSource struct {
 	ignoreHostnameAnnotation       bool
 	publishInternal                bool
 	publishHostIP                  bool
+	nodePortEnabled                bool
+	nodePortLabels                 labels.Set
 	alwaysPublishNotReadyAddresses bool
 	serviceInformer                coreinformers.ServiceInformer
 	endpointsInformer              coreinformers.EndpointsInformer
@@ -68,7 +70,7 @@ type serviceSource struct {
 }
 
 // NewServiceSource creates a new serviceSource with the given config.
-func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilter string, fqdnTemplate string, combineFqdnAnnotation bool, compatibility string, publishInternal bool, publishHostIP bool, alwaysPublishNotReadyAddresses bool, serviceTypeFilter []string, ignoreHostnameAnnotation bool) (Source, error) {
+func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilter string, fqdnTemplate string, combineFqdnAnnotation bool, compatibility string, publishInternal bool, publishHostIP bool, alwaysPublishNotReadyAddresses bool, serviceTypeFilter []string, ignoreHostnameAnnotation, nodePortEnabled bool, nodePortSelector string) (Source, error) {
 	var (
 		tmpl *template.Template
 		err  error
@@ -80,6 +82,11 @@ func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilt
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	nodePortLabels, err := labels.ConvertSelectorToLabelsMap(nodePortSelector)
+	if err != nil {
+		return nil, err
 	}
 
 	// Use shared informers to listen for add/update/delete of services/pods/nodes in the specified namespace.
@@ -147,6 +154,8 @@ func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilt
 		ignoreHostnameAnnotation:       ignoreHostnameAnnotation,
 		publishInternal:                publishInternal,
 		publishHostIP:                  publishHostIP,
+		nodePortEnabled:                nodePortEnabled,
+		nodePortLabels:                 nodePortLabels,
 		alwaysPublishNotReadyAddresses: alwaysPublishNotReadyAddresses,
 		serviceInformer:                serviceInformer,
 		endpointsInformer:              endpointsInformer,
@@ -475,7 +484,10 @@ func (sc *serviceSource) generateEndpoints(svc *v1.Service, hostname string, pro
 			log.Errorf("Unable to extract targets from service %s/%s error: %v", svc.Namespace, svc.Name, err)
 			return endpoints
 		}
-		endpoints = append(endpoints, sc.extractNodePortEndpoints(svc, targets, hostname, ttl)...)
+		// If the user wants an SRV record as well, extract that here
+		if sc.nodePortEnabled {
+			endpoints = append(endpoints, sc.extractNodePortSRVEndpoints(svc, targets, hostname, ttl)...)
+		}
 	case v1.ServiceTypeExternalName:
 		targets = append(targets, extractServiceExternalName(svc)...)
 	}
@@ -553,6 +565,11 @@ func (sc *serviceSource) extractNodePortTargets(svc *v1.Service) (endpoint.Targe
 
 	switch svc.Spec.ExternalTrafficPolicy {
 	case v1.ServiceExternalTrafficPolicyTypeLocal:
+		// k8s services with an externalTrafficPolicy of Local will ensure that traffic is only
+		// routed locally within a node -- not to other nodes via NATing. In this mode, a pod is
+		// only accessible by directly accessing the node on which it resides. Therefore,
+		// we need to find which node(s) the pod(s) selected by the service are residing on, and
+		// only include those nodes in the targets.
 		nodesMap := map[*v1.Node]struct{}{}
 		labelSelector, err := metav1.ParseToLabelSelector(labels.Set(svc.Spec.Selector).AsSelectorPreValidated().String())
 		if err != nil {
@@ -581,7 +598,9 @@ func (sc *serviceSource) extractNodePortTargets(svc *v1.Service) (endpoint.Targe
 			}
 		}
 	default:
-		nodes, err = sc.nodeInformer.Lister().List(labels.Everything())
+		// Ensure we filter out the master from the list of nodes by only selecting
+		// nodes labeled with the "worker" role, not the "master" role
+		nodes, err = sc.nodeInformer.Lister().List(labels.SelectorFromSet(sc.nodePortLabels))
 		if err != nil {
 			return nil, err
 		}
@@ -611,7 +630,7 @@ func (sc *serviceSource) extractNodePortTargets(svc *v1.Service) (endpoint.Targe
 	return internalIPs, nil
 }
 
-func (sc *serviceSource) extractNodePortEndpoints(svc *v1.Service, nodeTargets endpoint.Targets, hostname string, ttl endpoint.TTL) []*endpoint.Endpoint {
+func (sc *serviceSource) extractNodePortSRVEndpoints(svc *v1.Service, nodeTargets endpoint.Targets, hostname string, ttl endpoint.TTL) []*endpoint.Endpoint {
 	var endpoints []*endpoint.Endpoint
 
 	for _, port := range svc.Spec.Ports {

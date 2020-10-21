@@ -309,7 +309,7 @@ func (p *PDNSProvider) ConvertEndpointsToZones(eps []*endpoint.Endpoint, changet
 				// external-dns v5.0.0-alpha onwards
 				records := []pgo.Record{}
 				for _, t := range ep.Targets {
-					if ep.RecordType == "CNAME" {
+					if ep.RecordType == "CNAME" || ep.RecordType == "SRV" {
 						t = provider.EnsureTrailingDot(t)
 					}
 
