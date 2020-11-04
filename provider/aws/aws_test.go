@@ -764,22 +764,27 @@ func TestAWSsubmitChangesRetryOnError(t *testing.T) {
 	ep2 := endpoint.NewEndpointWithTTL("fail.zone-1.ext-dns-test-2.teapot.zalan.do", endpoint.RecordTypeA, endpoint.TTL(recordTTL), "1.0.0.2")
 	ep3 := endpoint.NewEndpointWithTTL("success2.zone-1.ext-dns-test-2.teapot.zalan.do", endpoint.RecordTypeA, endpoint.TTL(recordTTL), "1.0.0.3")
 
+	ep2txt := endpoint.NewEndpointWithTTL("fail__edns_housekeeping.zone-1.ext-dns-test-2.teapot.zalan.do", endpoint.RecordTypeTXT, endpoint.TTL(recordTTL), "something") // "__edns_housekeeping" is the TXT suffix
+	ep2txt.Labels = map[string]string{
+		endpoint.OwnedRecordLabelKey: "fail.zone-1.ext-dns-test-2.teapot.zalan.do",
+	}
+
 	// "success" and "fail" are created in the first step, both are submitted in the same batch; this should fail
-	cs1 := provider.newChanges(route53.ChangeActionCreate, []*endpoint.Endpoint{ep2, ep1}, records, zones)
+	cs1 := provider.newChanges(route53.ChangeActionCreate, []*endpoint.Endpoint{ep2, ep2txt, ep1}, records, zones)
 	input1 := &route53.ChangeResourceRecordSetsInput{
 		HostedZoneId: aws.String("/hostedzone/zone-1.ext-dns-test-2.teapot.zalan.do."),
 		ChangeBatch: &route53.ChangeBatch{
-			Changes: cs1,
+			Changes: ownedRecordRemoved(cs1),
 		},
 	}
 	clientStub.MockMethod("ChangeResourceRecordSets", input1).Return(nil, fmt.Errorf("Mock route53 failure"))
 
 	// because of the failure, changes will be retried one by one; make "fail" submitted in its own batch fail as well
-	cs2 := provider.newChanges(route53.ChangeActionCreate, []*endpoint.Endpoint{ep2}, records, zones)
+	cs2 := provider.newChanges(route53.ChangeActionCreate, []*endpoint.Endpoint{ep2, ep2txt}, records, zones)
 	input2 := &route53.ChangeResourceRecordSetsInput{
 		HostedZoneId: aws.String("/hostedzone/zone-1.ext-dns-test-2.teapot.zalan.do."),
 		ChangeBatch: &route53.ChangeBatch{
-			Changes: cs2,
+			Changes: ownedRecordRemoved(cs2),
 		},
 	}
 	clientStub.MockMethod("ChangeResourceRecordSets", input2).Return(nil, fmt.Errorf("Mock route53 failure"))
@@ -787,14 +792,14 @@ func TestAWSsubmitChangesRetryOnError(t *testing.T) {
 	// "success" should have been created, verify that we still get an error because "fail" failed
 	require.Error(t, provider.submitChanges(ctx, cs1, zones))
 
-	// assert that "success" was successfully created and "fail" was not
+	// assert that "success" was successfully created and "fail" and its TXT record were not
 	records, err = provider.Records(ctx)
 	require.NoError(t, err)
 	ok := false
 	for _, r := range records {
 		if r.DNSName == "success.zone-1.ext-dns-test-2.teapot.zalan.do" {
 			ok = true
-		} else if r.DNSName == "fail.zone-1.ext-dns-test-2.teapot.zalan.do" {
+		} else if r.DNSName == "fail.zone-1.ext-dns-test-2.teapot.zalan.do" || r.DNSName == "fail__edns_housekeeping.zone-1.ext-dns-test-2.teapot.zalan.do" {
 			ok = false
 			break
 		}
@@ -802,7 +807,7 @@ func TestAWSsubmitChangesRetryOnError(t *testing.T) {
 	require.True(t, ok)
 
 	// next batch should contain "fail" and "success2", should succeed this time
-	cs3 := provider.newChanges(route53.ChangeActionCreate, []*endpoint.Endpoint{ep2, ep3}, records, zones)
+	cs3 := provider.newChanges(route53.ChangeActionCreate, []*endpoint.Endpoint{ep2, ep2txt, ep3}, records, zones)
 	require.NoError(t, provider.submitChanges(ctx, cs3, zones))
 
 	// verify all records are there
@@ -810,11 +815,11 @@ func TestAWSsubmitChangesRetryOnError(t *testing.T) {
 	require.NoError(t, err)
 	count := 0
 	for _, r := range records {
-		if r.DNSName == "success.zone-1.ext-dns-test-2.teapot.zalan.do" || r.DNSName == "fail.zone-1.ext-dns-test-2.teapot.zalan.do" || r.DNSName == "success2.zone-1.ext-dns-test-2.teapot.zalan.do" {
+		if r.DNSName == "success.zone-1.ext-dns-test-2.teapot.zalan.do" || r.DNSName == "fail.zone-1.ext-dns-test-2.teapot.zalan.do" || r.DNSName == "success2.zone-1.ext-dns-test-2.teapot.zalan.do" || r.DNSName == "fail__edns_housekeeping.zone-1.ext-dns-test-2.teapot.zalan.do" {
 			count += 1
 		}
 	}
-	require.Equal(t, count, 3)
+	require.Equal(t, count, 4)
 }
 
 func TestAWSBatchChangeSet(t *testing.T) {
