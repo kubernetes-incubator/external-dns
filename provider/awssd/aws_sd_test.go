@@ -214,6 +214,19 @@ func TestAWSSDProvider_Records(t *testing.T) {
 					}},
 				},
 			},
+			"a-v2-srv": {
+				Id:          aws.String("a-v2-srv"),
+				Name:        aws.String("service1v2"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeA),
+						TTL:  aws.Int64(100),
+					}},
+				},
+			},
 			"alias-srv": {
 				Id:          aws.String("alias-srv"),
 				Name:        aws.String("service2"),
@@ -240,6 +253,84 @@ func TestAWSSDProvider_Records(t *testing.T) {
 					}},
 				},
 			},
+			"srv-srv": {
+				Id:          aws.String("srv-srv"),
+				Name:        aws.String("_http._tcp.service1"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeSrv),
+						TTL:  aws.Int64(120),
+					}},
+				},
+			},
+			"srv-partial-srv": {
+				Id:          aws.String("srv-partial-srv"),
+				Name:        aws.String("_httppartial._tcp.service1"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeSrv),
+						TTL:  aws.Int64(120),
+					}},
+				},
+			},
+			"srv-wrongport-srv": {
+				Id:          aws.String("srv-wrongport-srv"),
+				Name:        aws.String("_httpwrongport._tcp.service1"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeSrv),
+						TTL:  aws.Int64(120),
+					}},
+				},
+			},
+			"srv-standalone-srv": {
+				Id:          aws.String("srv-standalone-srv"),
+				Name:        aws.String("_http._tcp.standalone"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeSrv),
+						TTL:  aws.Int64(120),
+					}},
+				},
+			},
+			"srv-multiple-srv": {
+				Id:          aws.String("srv-multiple-srv"),
+				Name:        aws.String("_http._tcp.multiple"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeSrv),
+						TTL:  aws.Int64(120),
+					}},
+				},
+			},
+			"srv-multiplepartial-srv": {
+				Id:          aws.String("srv-multiplepartial-srv"),
+				Name:        aws.String("_http._tcp.multiplepartial"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeSrv),
+						TTL:  aws.Int64(120),
+					}},
+				},
+			},
 		},
 	}
 
@@ -255,6 +346,20 @@ func TestAWSSDProvider_Records(t *testing.T) {
 				Id: aws.String("1.2.3.5"),
 				Attributes: map[string]*string{
 					sdInstanceAttrIPV4: aws.String("1.2.3.5"),
+				},
+			},
+		},
+		"a-v2-srv": {
+			"1.2.3.6": {
+				Id: aws.String("1.2.3.6"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4: aws.String("1.2.3.6"),
+				},
+			},
+			"1.2.3.7": {
+				Id: aws.String("1.2.3.7"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4: aws.String("1.2.3.7"),
 				},
 			},
 		},
@@ -274,12 +379,151 @@ func TestAWSSDProvider_Records(t *testing.T) {
 				},
 			},
 		},
+		"srv-srv": {
+			"1.2.3.4_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.4_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.4"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+			"1.2.3.5_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.5_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.5"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+		},
+		"srv-partial-srv": {
+			"1.2.3.4_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.4_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.4"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+		},
+		"srv-wrongport-srv": {
+			"1.2.3.4_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.4_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.4"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+			"1.2.3.5_0_50_8080_service1.private.com": {
+				Id: aws.String("1.2.3.5_0_50_8080_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.5"),
+					sdInstanceAttrPort:        aws.String("999"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 999 service1.private.com"),
+				},
+			},
+		},
+		"srv-standalone-srv": {
+			"1.2.3.6_0_50_80_testabc.private.com": {
+				Id: aws.String("1.2.3.6_0_50_80_testabc.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.6"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 testabc.private.com"),
+				},
+			},
+			"1.2.3.7_0_50_80_testdef.private.com": {
+				Id: aws.String("1.2.3.7_0_50_80_testdef.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.7"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 testdef.private.com"),
+				},
+			},
+		},
+		"srv-multiple-srv": {
+			"1.2.3.4_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.4_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.4"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+			"1.2.3.5_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.5_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.5"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+			"1.2.3.6_0_50_8081_service1v2.private.com": {
+				Id: aws.String("1.2.3.6_0_50_8081_service1v2.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.6"),
+					sdInstanceAttrPort:        aws.String("8081"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 8081 service1v2.private.com"),
+				},
+			},
+			"1.2.3.7_0_50_8081_service1v2.private.com": {
+				Id: aws.String("1.2.3.7_0_50_8081_service1v2.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.7"),
+					sdInstanceAttrPort:        aws.String("8081"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 8081 service1v2.private.com"),
+				},
+			},
+		},
+		"srv-multiplepartial-srv": {
+			"1.2.3.4_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.4_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.4"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+			"1.2.3.6_0_50_80_service1.private.com": {
+				Id: aws.String("1.2.3.6_0_50_80_service1.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.6"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1.private.com"),
+				},
+			},
+			"1.2.3.6_0_50_80_service1v2.private.com": {
+				Id: aws.String("1.2.3.6_0_50_80_service1v2.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.6"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1v2.private.com"),
+				},
+			},
+			"1.2.3.7_0_50_80_service1v2.private.com": {
+				Id: aws.String("1.2.3.7_0_50_80_service1v2.private.com"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4:        aws.String("1.2.3.7"),
+					sdInstanceAttrPort:        aws.String("80"),
+					sdInstanceAttrOriginalSrv: aws.String("0 50 80 service1v2.private.com"),
+				},
+			},
+		},
 	}
 
 	expectedEndpoints := []*endpoint.Endpoint{
 		{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5"}, RecordType: endpoint.RecordTypeA, RecordTTL: 100, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
 		{DNSName: "service2.private.com", Targets: endpoint.Targets{"load-balancer.us-east-1.elb.amazonaws.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 100, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
 		{DNSName: "service3.private.com", Targets: endpoint.Targets{"cname.target.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 80, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
+		{DNSName: "service1v2.private.com", Targets: endpoint.Targets{"1.2.3.6", "1.2.3.7"}, RecordType: endpoint.RecordTypeA, RecordTTL: 100, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
+		{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"0 50 80 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httppartial._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.4_0_50_80_service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpwrongport._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.4_0_50_80_service1.private.com", "1.2.3.5_0_50_999_service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_http._tcp.standalone.private.com", Targets: endpoint.Targets{"1.2.3.6_0_50_80_testabc.private.com", "1.2.3.7_0_50_80_testdef.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_http._tcp.multiple.private.com", Targets: endpoint.Targets{"0 50 80 service1.private.com", "0 50 8081 service1v2.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_http._tcp.multiplepartial.private.com", Targets: endpoint.Targets{"1.2.3.4_0_50_80_service1.private.com", "1.2.3.6_0_50_80_service1.private.com", "0 50 80 service1v2.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
 	}
 
 	api := &AWSSDClientStub{
@@ -296,10 +540,83 @@ func TestAWSSDProvider_Records(t *testing.T) {
 }
 
 func TestAWSSDProvider_ApplyChanges(t *testing.T) {
+
+	// used to test service names >64 characters (handled by targetToInstanceID)
+	longServiceName := "longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong"
+
+	// 1. initial endpoints to be created
+	getEndpoints := func() []*endpoint.Endpoint {
+		ep := []*endpoint.Endpoint{
+			{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+			{DNSName: longServiceName + ".private.com", Targets: endpoint.Targets{"1.2.3.7", "1.2.3.8"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+			{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"0 50 80 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "service2.private.com", Targets: endpoint.Targets{"load-balancer.us-east-1.elb.amazonaws.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 80},
+			{DNSName: "service3.private.com", Targets: endpoint.Targets{"cname.target.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 100},
+			{DNSName: "service1.privatetwo.com", Targets: endpoint.Targets{"5.6.7.8", "5.6.7.9"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+			{DNSName: "_http._tcp.service1.privatetwo.com", Targets: endpoint.Targets{"0 50 80 service1.privatetwo.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "_http._tcp.multiple.private.com", Targets: endpoint.Targets{"0 50 80 service1.private.com", "0 50 8081 " + longServiceName + ".private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{"0 50 8080 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		}
+		return ep
+	}
+
+	// 2. updates to be applied to initial endpoints
+	getUpdates := func() ([]*endpoint.Endpoint, []*endpoint.Endpoint) {
+		epOld := []*endpoint.Endpoint{
+			{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+			{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.4_0_50_80_service1.private.com", "1.2.3.5_0_50_80_service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.4_0_50_8080_service1.private.com", "1.2.3.5_0_50_8080_service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: longServiceName + ".private.com", Targets: endpoint.Targets{"1.2.3.7", "1.2.3.8"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+			{DNSName: "_http._tcp.multiple.private.com", Targets: endpoint.Targets{"1.2.3.4_0_50_80_service1.private.com", "1.2.3.5_0_50_80_service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		}
+		epNew := []*endpoint.Endpoint{
+			{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5", "1.2.3.6"}, RecordType: endpoint.RecordTypeA, RecordTTL: 100},
+			{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"0 10 80 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{"0 50 8080 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 240},
+			{DNSName: longServiceName + ".private.com", Targets: endpoint.Targets{}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+			{DNSName: "_http._tcp.multiple.private.com", Targets: endpoint.Targets{"0 50 80 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		}
+		return epOld, epNew
+	}
+
+	// 3. expected endpoints after the updates
+	getEndpointsAfterUpdate := func() []*endpoint.Endpoint {
+		ep := []*endpoint.Endpoint{
+			{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5", "1.2.3.6"}, RecordType: endpoint.RecordTypeA, RecordTTL: 100},
+			{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"0 10 80 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "service2.private.com", Targets: endpoint.Targets{"load-balancer.us-east-1.elb.amazonaws.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 80},
+			{DNSName: "service3.private.com", Targets: endpoint.Targets{"cname.target.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 100},
+			{DNSName: "service1.privatetwo.com", Targets: endpoint.Targets{"5.6.7.8", "5.6.7.9"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+			{DNSName: "_http._tcp.service1.privatetwo.com", Targets: endpoint.Targets{"0 50 80 service1.privatetwo.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "_http._tcp.multiple.private.com", Targets: endpoint.Targets{"0 50 80 service1.private.com", "1.2.3.7_0_50_8081_" + longServiceName + ".private.com", "1.2.3.8_0_50_8081_" + longServiceName + ".private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+			{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{"0 50 8080 service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 240},
+		}
+		return ep
+	}
+
+	// 4. endpoints to be deleted (all except orphan)
+	getDeletes := func() []*endpoint.Endpoint {
+		ep := getEndpointsAfterUpdate()
+		ep = ep[:7]
+		return ep
+	}
+
+	// 5. expected orphan endpoints after deletion
+	setOrphanEndpoints := func() []*endpoint.Endpoint {
+		ep := []*endpoint.Endpoint{
+			{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.4_0_50_8080_service1.private.com", "1.2.3.5_0_50_8080_service1.private.com", "1.2.3.6_0_50_8080_service1.private.com"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 240},
+		}
+		return ep
+	}
+
 	namespaces := map[string]*sd.Namespace{
 		"private": {
 			Id:   aws.String("private"),
 			Name: aws.String("private.com"),
+			Type: aws.String(sd.NamespaceTypeDnsPrivate),
+		}, "privatetwo": {
+			Id:   aws.String("privatetwo"),
+			Name: aws.String("privatetwo.com"),
 			Type: aws.String(sd.NamespaceTypeDnsPrivate),
 		},
 	}
@@ -310,11 +627,8 @@ func TestAWSSDProvider_ApplyChanges(t *testing.T) {
 		instances:  make(map[string]map[string]*sd.Instance),
 	}
 
-	expectedEndpoints := []*endpoint.Endpoint{
-		{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
-		{DNSName: "service2.private.com", Targets: endpoint.Targets{"load-balancer.us-east-1.elb.amazonaws.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 80},
-		{DNSName: "service3.private.com", Targets: endpoint.Targets{"cname.target.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 100},
-	}
+	expectedEndpoints := []*endpoint.Endpoint{}
+	expectedEndpoints = getEndpoints()
 
 	provider := newTestAWSSDProvider(api, endpoint.NewDomainFilter([]string{}), "")
 
@@ -325,23 +639,54 @@ func TestAWSSDProvider_ApplyChanges(t *testing.T) {
 		Create: expectedEndpoints,
 	})
 
+	// SRV record targets are converted by ApplyChanges (from hostname to IP). Reset endpoints is needed
+	expectedEndpoints = getEndpoints()
+
 	// make sure services were created
-	assert.Len(t, api.services["private"], 3)
+	assert.Len(t, api.services["private"], 7)
+	assert.Len(t, api.services["privatetwo"], 2)
 	existingServices, _ := provider.ListServicesByNamespaceID(namespaces["private"].Id)
 	assert.NotNil(t, existingServices["service1"])
+	assert.NotNil(t, existingServices["_http._tcp.service1"])
 	assert.NotNil(t, existingServices["service2"])
 	assert.NotNil(t, existingServices["service3"])
-
+	assert.NotNil(t, existingServices[longServiceName])
+	assert.NotNil(t, existingServices["_http._tcp.multiple"])
+	existingServicesTwo, _ := provider.ListServicesByNamespaceID(namespaces["privatetwo"].Id)
+	assert.NotNil(t, existingServicesTwo["service1"])
+	assert.NotNil(t, existingServicesTwo["_http._tcp.service1"])
 	// make sure instances were registered
 	endpoints, _ := provider.Records(ctx)
 	assert.True(t, testutils.SameEndpoints(expectedEndpoints, endpoints), "expected and actual endpoints don't match, expected=%v, actual=%v", expectedEndpoints, endpoints)
 
+	// apply updates
+	upOld, upNew := getUpdates()
 	ctx = context.Background()
-	// apply deletes
+	provider.ApplyChanges(ctx, &plan.Changes{
+		UpdateOld: upOld,
+		UpdateNew: upNew,
+	})
+	// make sure instances were updated
+	expectedEndpoints = getEndpointsAfterUpdate()
+	endpoints, _ = provider.Records(ctx)
+	assert.True(t, testutils.SameEndpoints(expectedEndpoints, endpoints), "expected and actual (UPDATED) endpoints don't match, expected=%v, actual=%v", expectedEndpoints, endpoints)
+
+	// delete all but orphan endpoints (test for orphan SRV edpoint)
+	orphanEndpoints := setOrphanEndpoints()
+	expectedEndpoints = getDeletes()
+	ctx = context.Background()
 	provider.ApplyChanges(ctx, &plan.Changes{
 		Delete: expectedEndpoints,
 	})
+	// make sure all instances except orphan are gone
+	endpoints, _ = provider.Records(ctx)
+	assert.True(t, testutils.SameEndpoints(orphanEndpoints, endpoints), "expected and actual (ORPHAN) endpoints don't match, expected=%v, actual=%v", orphanEndpoints, endpoints)
 
+	//delete orphan endpoints
+	ctx = context.Background()
+	provider.ApplyChanges(ctx, &plan.Changes{
+		Delete: orphanEndpoints,
+	})
 	// make sure all instances are gone
 	endpoints, _ = provider.Records(ctx)
 	assert.Empty(t, endpoints)
@@ -588,6 +933,24 @@ func TestAWSSDProvider_CreateService(t *testing.T) {
 		NamespaceId: aws.String("private"),
 	}
 
+	// SRV type
+	provider.CreateService(aws.String("private"), aws.String("SRV-srv"), &endpoint.Endpoint{
+		RecordType: endpoint.RecordTypeSRV,
+		RecordTTL:  60,
+		Targets:    endpoint.Targets{"0 50 80 service1.private.com"},
+	})
+	expectedServices["SRV-srv"] = &sd.Service{
+		Name: aws.String("SRV-srv"),
+		DnsConfig: &sd.DnsConfig{
+			RoutingPolicy: aws.String(sd.RoutingPolicyMultivalue),
+			DnsRecords: []*sd.DnsRecord{{
+				Type: aws.String(sd.RecordTypeSrv),
+				TTL:  aws.Int64(60),
+			}},
+		},
+		NamespaceId: aws.String("private"),
+	}
+
 	validateAWSSDServicesMapsEqual(t, expectedServices, api.services["private"])
 }
 
@@ -694,6 +1057,18 @@ func TestAWSSDProvider_RegisterInstance(t *testing.T) {
 					}},
 				},
 			},
+			"srv-srv": {
+				Id:   aws.String("srv-srv"),
+				Name: aws.String("_http._tcp.service1"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeSrv),
+						TTL:  aws.Int64(60),
+					}},
+				},
+			},
 		},
 	}
 
@@ -775,6 +1150,28 @@ func TestAWSSDProvider_RegisterInstance(t *testing.T) {
 		},
 	}
 
+	// IP-port-based SRV instance
+	provider.RegisterInstance(services["private"]["srv-srv"], &endpoint.Endpoint{
+		RecordType: endpoint.RecordTypeSRV,
+		DNSName:    "_http._tcp.service1.private.com.",
+		RecordTTL:  300,
+		Targets:    endpoint.Targets{"1.2.3.40 50 80", "1.2.3.50 50 80"},
+	})
+	expectedInstances["1.2.3.40 50 80"] = &sd.Instance{
+		Id: aws.String("1.2.3.40 50 80"),
+		Attributes: map[string]*string{
+			sdInstanceAttrIPV4: aws.String("1.2.3.4"),
+			sdInstanceAttrPort: aws.String("80"),
+		},
+	}
+	expectedInstances["1.2.3.50 50 80"] = &sd.Instance{
+		Id: aws.String("1.2.3.50 50 80"),
+		Attributes: map[string]*string{
+			sdInstanceAttrIPV4: aws.String("1.2.3.5"),
+			sdInstanceAttrPort: aws.String("80"),
+		},
+	}
+
 	// validate instances
 	for _, srvInst := range api.instances {
 		for id, inst := range srvInst {
@@ -825,4 +1222,57 @@ func TestAWSSDProvider_DeregisterInstance(t *testing.T) {
 	provider.DeregisterInstance(services["private"]["srv1"], endpoint.NewEndpoint("srv1.private.com.", endpoint.RecordTypeA, "1.2.3.4"))
 
 	assert.Len(t, instances["srv1"], 0)
+}
+
+func TestAWSSDProvider_DedupDeletesAndCreates(t *testing.T) {
+	namespaces := map[string]*sd.Namespace{
+		"private": {
+			Id:   aws.String("private"),
+			Name: aws.String("private.com"),
+			Type: aws.String(sd.NamespaceTypeDnsPrivate),
+		},
+	}
+
+	services := map[string]map[string]*sd.Service{}
+
+	instances := map[string]map[string]*sd.Instance{}
+
+	deletes := []*endpoint.Endpoint{
+		{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+		{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 80", "1.2.3.50 50 80"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 8080", "1.2.3.50 50 8080"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpthird._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 80", "1.2.3.50 50 80"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+	}
+	creates := []*endpoint.Endpoint{
+		{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.5", "1.2.3.6"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+		{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.50 50 80", "1.2.3.60 50 80"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 8080", "1.2.3.50 50 8080"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpthird._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 8080", "1.2.3.50 50 8080"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+	}
+
+	expDedupDeletes := []*endpoint.Endpoint{
+		{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+		{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 80"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpthird._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 80", "1.2.3.50 50 80"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+	}
+	expDedupCreates := []*endpoint.Endpoint{
+		{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.6"}, RecordType: endpoint.RecordTypeA, RecordTTL: 60},
+		{DNSName: "_http._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.60 50 80"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpsecond._tcp.service1.private.com", Targets: endpoint.Targets{}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+		{DNSName: "_httpthird._tcp.service1.private.com", Targets: endpoint.Targets{"1.2.3.40 50 8080", "1.2.3.50 50 8080"}, RecordType: endpoint.RecordTypeSRV, RecordTTL: 120},
+	}
+
+	api := &AWSSDClientStub{
+		namespaces: namespaces,
+		services:   services,
+		instances:  instances,
+	}
+
+	provider := newTestAWSSDProvider(api, endpoint.NewDomainFilter([]string{}), "")
+
+	dedupCreates, dedupDeletes, _ := provider.DedupDeletesAndCreates(creates, deletes)
+
+	assert.True(t, testutils.SameEndpoints(expDedupDeletes, dedupDeletes), "expected and actual deduplicated delete endpoints don't match, expected=%v, actual=%v", expDedupDeletes, dedupDeletes)
+	assert.True(t, testutils.SameEndpoints(expDedupCreates, dedupCreates), "expected and actual deduplicated create endpoints don't match, expected=%v, actual=%v", expDedupCreates, dedupCreates)
 }

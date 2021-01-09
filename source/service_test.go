@@ -56,7 +56,10 @@ func (suite *ServiceSuite) SetupTest() {
 		false,
 		[]string{},
 		false,
+		true,
+		"node-role.kubernetes.io/node=",
 	)
+
 	suite.fooWithTargets = &v1.Service{
 		Spec: v1.ServiceSpec{
 			Type: v1.ServiceTypeLoadBalancer,
@@ -150,6 +153,8 @@ func testServiceSourceNewServiceSource(t *testing.T) {
 				false,
 				ti.serviceTypesFilter,
 				false,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 
 			if ti.expectError {
@@ -1230,6 +1235,8 @@ func testServiceSourceEndpoints(t *testing.T) {
 				false,
 				tc.serviceTypesFilter,
 				tc.ignoreHostnameAnnotation,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 			require.NoError(t, err)
 
@@ -1402,6 +1409,8 @@ func testMultipleServicesEndpoints(t *testing.T) {
 				false,
 				tc.serviceTypesFilter,
 				tc.ignoreHostnameAnnotation,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 			require.NoError(t, err)
 
@@ -1586,6 +1595,8 @@ func TestClusterIpServices(t *testing.T) {
 				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 			require.NoError(t, err)
 
@@ -1648,7 +1659,8 @@ func TestNodePortServices(t *testing.T) {
 			false,
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
+					Name:   "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1658,12 +1670,24 @@ func TestNodePortServices(t *testing.T) {
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node2",
+					Name:   "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
 						{Type: v1.NodeExternalIP, Address: "54.10.11.2"},
 						{Type: v1.NodeInternalIP, Address: "10.0.1.2"},
+					},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "node3",
+					Labels: map[string]string{"node-role.kubernetes.io": "master"},
+				},
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Type: v1.NodeExternalIP, Address: "54.10.11.3"},
+						{Type: v1.NodeInternalIP, Address: "10.0.1.3"},
 					},
 				},
 			}},
@@ -1691,7 +1715,8 @@ func TestNodePortServices(t *testing.T) {
 			false,
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
+					Name:   "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1701,12 +1726,24 @@ func TestNodePortServices(t *testing.T) {
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node2",
+					Name:   "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
 						{Type: v1.NodeExternalIP, Address: "54.10.11.2"},
 						{Type: v1.NodeInternalIP, Address: "10.0.1.2"},
+					},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "node3",
+					Labels: map[string]string{"node-role.kubernetes.io": "master"},
+				},
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Type: v1.NodeExternalIP, Address: "54.10.11.3"},
+						{Type: v1.NodeInternalIP, Address: "10.0.1.3"},
 					},
 				},
 			}},
@@ -1735,7 +1772,8 @@ func TestNodePortServices(t *testing.T) {
 			false,
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
+					Name:   "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1745,12 +1783,24 @@ func TestNodePortServices(t *testing.T) {
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node2",
+					Name:   "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
 						{Type: v1.NodeExternalIP, Address: "54.10.11.2"},
 						{Type: v1.NodeInternalIP, Address: "10.0.1.2"},
+					},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "node3",
+					Labels: map[string]string{"node-role.kubernetes.io": "master"},
+				},
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Type: v1.NodeExternalIP, Address: "54.10.11.3"},
+						{Type: v1.NodeInternalIP, Address: "10.0.1.3"},
 					},
 				},
 			}},
@@ -1781,7 +1831,8 @@ func TestNodePortServices(t *testing.T) {
 			false,
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
+					Name:   "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1790,11 +1841,23 @@ func TestNodePortServices(t *testing.T) {
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node2",
+					Name:   "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
 						{Type: v1.NodeInternalIP, Address: "10.0.1.2"},
+					},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "node3",
+					Labels: map[string]string{"node-role.kubernetes.io": "master"},
+				},
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Type: v1.NodeExternalIP, Address: "54.10.11.3"},
+						{Type: v1.NodeInternalIP, Address: "10.0.1.3"},
 					},
 				},
 			}},
@@ -1825,7 +1888,8 @@ func TestNodePortServices(t *testing.T) {
 			false,
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
+					Name:   "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1835,12 +1899,24 @@ func TestNodePortServices(t *testing.T) {
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "node2",
+					Name:   "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
 						{Type: v1.NodeExternalIP, Address: "54.10.11.2"},
 						{Type: v1.NodeInternalIP, Address: "10.0.1.2"},
+					},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "node3",
+					Labels: map[string]string{"node-role.kubernetes.io": "master"},
+				},
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Type: v1.NodeExternalIP, Address: "54.10.11.3"},
+						{Type: v1.NodeInternalIP, Address: "10.0.1.3"},
 					},
 				},
 			}},
@@ -1872,6 +1948,7 @@ func TestNodePortServices(t *testing.T) {
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1882,6 +1959,7 @@ func TestNodePortServices(t *testing.T) {
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1919,6 +1997,7 @@ func TestNodePortServices(t *testing.T) {
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1929,6 +2008,7 @@ func TestNodePortServices(t *testing.T) {
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1966,6 +2046,7 @@ func TestNodePortServices(t *testing.T) {
 			[]*v1.Node{{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node1",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -1976,6 +2057,7 @@ func TestNodePortServices(t *testing.T) {
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node2",
+					Labels: map[string]string{"node-role.kubernetes.io/node": ""},
 				},
 				Status: v1.NodeStatus{
 					Addresses: []v1.NodeAddress{
@@ -2058,6 +2140,8 @@ func TestNodePortServices(t *testing.T) {
 				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 			require.NoError(t, err)
 
@@ -2387,6 +2471,8 @@ func TestHeadlessServices(t *testing.T) {
 				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 			require.NoError(t, err)
 
@@ -2689,6 +2775,8 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 			require.NoError(t, err)
 
@@ -2794,6 +2882,8 @@ func TestExternalServices(t *testing.T) {
 				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
+				true,
+				"node-role.kubernetes.io/node=",
 			)
 			require.NoError(t, err)
 
@@ -2834,7 +2924,7 @@ func BenchmarkServiceEndpoints(b *testing.B) {
 	_, err := kubernetes.CoreV1().Services(service.Namespace).Create(context.Background(), service, metav1.CreateOptions{})
 	require.NoError(b, err)
 
-	client, err := NewServiceSource(kubernetes, v1.NamespaceAll, "", "", false, "", false, false, false, []string{}, false)
+	client, err := NewServiceSource(kubernetes, v1.NamespaceAll, "", "", false, "", false, false, false, []string{}, false, true, "node-role.kubernetes.io/node=")
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {

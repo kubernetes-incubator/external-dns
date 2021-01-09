@@ -29,6 +29,8 @@ import (
 type PlanTestSuite struct {
 	suite.Suite
 	fooV1Cname                       *endpoint.Endpoint
+	fooV1SRV                         *endpoint.Endpoint
+	fooV2SRV                         *endpoint.Endpoint
 	fooV2Cname                       *endpoint.Endpoint
 	fooV2TXT                         *endpoint.Endpoint
 	fooV2CnameNoLabel                *endpoint.Endpoint
@@ -73,6 +75,22 @@ func (suite *PlanTestSuite) SetupTest() {
 		DNSName:    "foo",
 		Targets:    endpoint.Targets{"v2"},
 		RecordType: "CNAME",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey: "ingress/default/foo-v2",
+		},
+	}
+	suite.fooV1SRV = &endpoint.Endpoint{
+		DNSName:    "_32554._tcp.foo.com.",
+		Targets:    endpoint.Targets{"v1"},
+		RecordType: "SRV",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey: "ingress/default/foo-v1",
+		},
+	}
+	suite.fooV2SRV = &endpoint.Endpoint{
+		DNSName:    "_32554._tcp.foo.com.",
+		Targets:    endpoint.Targets{"v2"},
+		RecordType: "SRV",
 		Labels: map[string]string{
 			endpoint.ResourceLabelKey: "ingress/default/foo-v2",
 		},
@@ -198,8 +216,8 @@ func (suite *PlanTestSuite) SetupTest() {
 
 func (suite *PlanTestSuite) TestSyncFirstRound() {
 	current := []*endpoint.Endpoint{}
-	desired := []*endpoint.Endpoint{suite.fooV1Cname, suite.fooV2Cname, suite.bar127A}
-	expectedCreate := []*endpoint.Endpoint{suite.fooV1Cname, suite.bar127A} //v1 is chosen because of resolver taking "min"
+	desired := []*endpoint.Endpoint{suite.fooV1Cname, suite.fooV2Cname, suite.fooV1SRV, suite.bar127A}
+	expectedCreate := []*endpoint.Endpoint{suite.fooV1Cname, suite.fooV1SRV, suite.bar127A} //v1 is chosen because of resolver taking "min"
 	expectedUpdateOld := []*endpoint.Endpoint{}
 	expectedUpdateNew := []*endpoint.Endpoint{}
 	expectedDelete := []*endpoint.Endpoint{}
@@ -239,11 +257,11 @@ func (suite *PlanTestSuite) TestSyncSecondRound() {
 }
 
 func (suite *PlanTestSuite) TestSyncSecondRoundMigration() {
-	current := []*endpoint.Endpoint{suite.fooV2CnameNoLabel}
-	desired := []*endpoint.Endpoint{suite.fooV2Cname, suite.fooV1Cname, suite.bar127A}
+	current := []*endpoint.Endpoint{suite.fooV2CnameNoLabel, suite.fooV2SRV}
+	desired := []*endpoint.Endpoint{suite.fooV2Cname, suite.fooV1Cname, suite.bar127A, suite.fooV1SRV}
 	expectedCreate := []*endpoint.Endpoint{suite.bar127A}
-	expectedUpdateOld := []*endpoint.Endpoint{suite.fooV2CnameNoLabel}
-	expectedUpdateNew := []*endpoint.Endpoint{suite.fooV1Cname}
+	expectedUpdateOld := []*endpoint.Endpoint{suite.fooV2CnameNoLabel, suite.fooV2SRV}
+	expectedUpdateNew := []*endpoint.Endpoint{suite.fooV1Cname, suite.fooV1SRV}
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
@@ -444,12 +462,12 @@ func (suite *PlanTestSuite) TestIgnoreTXT() {
 }
 
 func (suite *PlanTestSuite) TestRemoveEndpoint() {
-	current := []*endpoint.Endpoint{suite.fooV1Cname, suite.bar192A}
+	current := []*endpoint.Endpoint{suite.fooV1Cname, suite.bar192A, suite.fooV1SRV}
 	desired := []*endpoint.Endpoint{suite.fooV1Cname}
 	expectedCreate := []*endpoint.Endpoint{}
 	expectedUpdateOld := []*endpoint.Endpoint{}
 	expectedUpdateNew := []*endpoint.Endpoint{}
-	expectedDelete := []*endpoint.Endpoint{suite.bar192A}
+	expectedDelete := []*endpoint.Endpoint{suite.bar192A, suite.fooV1SRV}
 
 	p := &Plan{
 		Policies: []Policy{&SyncPolicy{}},
