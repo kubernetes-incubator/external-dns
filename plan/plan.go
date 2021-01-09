@@ -236,7 +236,7 @@ func filterRecordsForPlan(records []*endpoint.Endpoint, domainFilter endpoint.Do
 		// Explicitly specify which records we want to use for planning.
 		// TODO: Add AAAA records as well when they are supported.
 		switch record.RecordType {
-		case endpoint.RecordTypeA, endpoint.RecordTypeCNAME, endpoint.RecordTypeNS:
+		case endpoint.RecordTypeA, endpoint.RecordTypeCNAME, endpoint.RecordTypeNS, endpoint.RecordTypeSRV:
 			filtered = append(filtered, record)
 		default:
 			continue
