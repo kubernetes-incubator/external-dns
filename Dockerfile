@@ -20,6 +20,8 @@ ARG ARCH
 WORKDIR /sigs.k8s.io/external-dns
 
 COPY . .
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.30.0
+RUN make lint
 RUN make test && make build.$ARCH
 
 # final image

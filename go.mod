@@ -10,6 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.3
 	github.com/Azure/go-autorest/autorest/to v0.4.0
+	github.com/IBM-Cloud/bluemix-go v0.0.0-20201214130426-d34fed0e9aff
 	github.com/akamai/AkamaiOPEN-edgegrid-golang v0.9.11
 	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38 // indirect
 	github.com/alecthomas/colour v0.1.0 // indirect

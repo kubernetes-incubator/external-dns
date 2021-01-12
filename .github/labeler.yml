@@ -67,3 +67,6 @@ provider/vultr: provider/vultr*
 
 # Add 'provider/ultradns' in file which starts with ultradns
 provider/ultradns: provider/ultradns*
+
+# Add 'provider/ibmcis' in file which starts with ultradns
+provider/ibmcis: provider/ibmcis*
