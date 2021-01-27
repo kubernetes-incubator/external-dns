@@ -28,6 +28,7 @@ ExternalDNS' current release is `v0.7`. This version allows you to keep selected
 * [AWS Route 53](https://aws.amazon.com/route53/)
 * [AWS Cloud Map](https://docs.aws.amazon.com/cloud-map/)
 * [AzureDNS](https://azure.microsoft.com/en-us/services/dns)
+* [Civo](https://www.civo.com/)
 * [CloudFlare](https://www.cloudflare.com/dns)
 * [RcodeZero](https://www.rcodezero.at/)
 * [DigitalOcean](https://www.digitalocean.com/products/networking)
@@ -81,6 +82,7 @@ The following table clarifies the current status of the providers according to t
 | AWS Cloud Map | Beta | |
 | Akamai Edge DNS | Beta | |
 | AzureDNS | Beta | |
+| Civo | Beta | @alejandrojnm |
 | CloudFlare | Beta | |
 | RcodeZero | Alpha | |
 | DigitalOcean | Alpha | |
@@ -124,6 +126,7 @@ The following tutorials are provided:
 	* [Kube Ingress AWS Controller](docs/tutorials/kube-ingress-aws.md)
 * [Azure DNS](docs/tutorials/azure.md)
 * [Azure Private DNS](docs/tutorials/azure-private-dns.md)
+* [Civo](docs/tutorials/civo.md)
 * [Cloudflare](docs/tutorials/cloudflare.md)
 * [CoreDNS](docs/tutorials/coredns.md)
 * [DigitalOcean](docs/tutorials/digitalocean.md)
