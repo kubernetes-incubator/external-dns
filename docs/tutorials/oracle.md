@@ -6,16 +6,25 @@ Make sure to use the latest version of ExternalDNS for this tutorial.
 
 ## Creating an OCI DNS Zone
 
-Create a DNS zone which will contain the managed DNS records. Let's use `example.com` as an reference here.
+Create a DNS zone which will contain the managed DNS records. Let's use
+`example.com` as a reference here.  Make note of the OCID of the compartment
+in which you created the zone; you'll need to provide that later.
 
 For more information about OCI DNS see the documentation [here][1].
 
 ## Deploy ExternalDNS
 
 Connect your `kubectl` client to the cluster you want to test ExternalDNS with.
+The OCI provider supports two authentication options: key-based and instance
+principals.
+
+### Key-based
+
 We first need to create a config file containing the information needed to connect with the OCI API.
 
-Create a new file (oci.yaml) and modify the contents to match the example below. Be sure to adjust the values to match your own credentials:
+Create a new file (oci.yaml) and modify the contents to match the example
+below. Be sure to adjust the values to match your own credentials, and the OCID
+of the compartment containing the zone:
 
 ```yaml
 auth:
@@ -37,7 +46,29 @@ Create a secret using the config file above:
 $ kubectl create secret generic external-dns-config --from-file=oci.yaml
 ```
 
-### Manifest (for clusters with RBAC enabled)
+### OCI IAM Instance Principal
+
+If you're running ExternalDNS within OCI, you can use OCI IAM instance
+principals to authenticate with OCI.  This obviates the need to create the
+secret with your credentials.  You'll need to ensure an OCI IAM policy exists
+with a statement granting the `manage dns` permission on zones and records in
+the target compartment to the dynamic group covering your instance running
+ExternalDNS.
+E.g.:
+
+```
+Allow dynamic-group <dynamic-group-name> to manage dns in compartment id <target-compartment-OCID>
+```
+
+You'll also need to add the `--oci-instance-principals=true` flag to enable
+this type of authentication. Finally, you'll need to add the
+`--oci-compartment-ocid=ocid1.compartment.oc1...` flag to provide the OCID of
+the compartment containing the zone to be managed.
+
+For more information about OCI IAM instance principals, see the documentation [here][2].
+For more information about OCI IAM policy details for the DNS service, see the documentation [here][3].
+
+## Manifest (for clusters with RBAC enabled)
 
 Apply the following manifest to deploy ExternalDNS.
 
@@ -159,3 +190,6 @@ $ kubectl apply -f nginx.yaml
 ```
 
 [1]: https://docs.cloud.oracle.com/iaas/Content/DNS/Concepts/dnszonemanagement.htm
+[2]: https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/dnspolicyreference.htm
+[3]: https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/callingservicesfrominstances.htm
+

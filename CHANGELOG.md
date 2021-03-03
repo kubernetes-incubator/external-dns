@@ -16,6 +16,7 @@
 - Fix NodePort with externaltrafficpolicy targets duplication @codearky
 - Update contributing section in README (#1760) @seanmalloy
 - Option to cache AWS zones list @bpineau
+- Oracle OCI provider: add support for instance principal authentication (#1700) @ericrrath
 - Refactor, enhance and test Akamai provider and documentation (#1846) @edglynes
 - Fix: only use absolute CNAMEs in Scaleway provider (#1859) @Sh4d1
 - Change Scaleway DNS API version from v2alpha2 to v2beta1 (#1938) @Sh4d1

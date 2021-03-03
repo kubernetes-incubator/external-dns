@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/oracle/oci-go-sdk/dns"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -36,12 +37,13 @@ const ociRecordTTL = 300
 
 // OCIAuthConfig holds connection parameters for the OCI API.
 type OCIAuthConfig struct {
-	Region      string `yaml:"region"`
-	TenancyID   string `yaml:"tenancy"`
-	UserID      string `yaml:"user"`
-	PrivateKey  string `yaml:"key"`
-	Fingerprint string `yaml:"fingerprint"`
-	Passphrase  string `yaml:"passphrase"`
+	Region               string `yaml:"region"`
+	TenancyID            string `yaml:"tenancy"`
+	UserID               string `yaml:"user"`
+	PrivateKey           string `yaml:"key"`
+	Fingerprint          string `yaml:"fingerprint"`
+	Passphrase           string `yaml:"passphrase"`
+	UseInstancePrincipal bool   `yaml:"useInstancePrincipal"`
 }
 
 // OCIConfig holds the configuration for the OCI Provider.
@@ -87,14 +89,25 @@ func LoadOCIConfig(path string) (*OCIConfig, error) {
 // NewOCIProvider initializes a new OCI DNS based Provider.
 func NewOCIProvider(cfg OCIConfig, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, dryRun bool) (*OCIProvider, error) {
 	var client ociDNSClient
-	client, err := dns.NewDnsClientWithConfigurationProvider(common.NewRawConfigurationProvider(
-		cfg.Auth.TenancyID,
-		cfg.Auth.UserID,
-		cfg.Auth.Region,
-		cfg.Auth.Fingerprint,
-		cfg.Auth.PrivateKey,
-		&cfg.Auth.Passphrase,
-	))
+	var err error
+	var configProvider common.ConfigurationProvider
+	if cfg.Auth.UseInstancePrincipal {
+		configProvider, err = auth.InstancePrincipalConfigurationProvider()
+		if err != nil {
+			return nil, errors.Wrap(err, "error creating OCI instance principal config provider")
+		}
+	} else {
+		configProvider = common.NewRawConfigurationProvider(
+			cfg.Auth.TenancyID,
+			cfg.Auth.UserID,
+			cfg.Auth.Region,
+			cfg.Auth.Fingerprint,
+			cfg.Auth.PrivateKey,
+			&cfg.Auth.Passphrase,
+		)
+	}
+
+	client, err = dns.NewDnsClientWithConfigurationProvider(configProvider)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing OCI DNS API client")
 	}

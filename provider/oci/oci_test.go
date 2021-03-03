@@ -19,6 +19,7 @@ package oci
 import (
 	"context"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/oracle/oci-go-sdk/common"
@@ -166,6 +167,17 @@ hKRtDhmSdWBo3tJK12RrAe4t7CUe8gMgTvU7ExlcA3xQkseFPx9K
 				},
 			},
 		},
+		"instance-principal": {
+			// testing the InstancePrincipalConfigurationProvider is tricky outside of an OCI context, because it tries
+			// to request a token from the internal OCI systems; this test-case just confirms that the expected error is
+			// observed, confirming that the instance-principal provider was instantiated.
+			config: OCIConfig{
+				Auth: OCIAuthConfig{
+					UseInstancePrincipal: true,
+				},
+			},
+			err: errors.New("error creating OCI instance principal config provider: failed to create a new key provider for instance principal"),
+		},
 		"invalid": {
 			config: OCIConfig{
 				Auth: OCIAuthConfig{
@@ -191,7 +203,8 @@ hKRtDhmSdWBo3tJK12RrAe4t7CUe8gMgTvU7ExlcA3xQkseFPx9K
 			if err == nil {
 				require.NoError(t, err)
 			} else {
-				require.Equal(t, tc.err.Error(), err.Error())
+				// have to use prefix testing because the expected instance-principal error strings vary after a known prefix
+				require.Truef(t, strings.HasPrefix(err.Error(), tc.err.Error()), "observed: %s", err.Error())
 			}
 		})
 	}
