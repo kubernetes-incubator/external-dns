@@ -46,6 +46,7 @@ import (
 	"sigs.k8s.io/external-dns/provider/dnsimple"
 	"sigs.k8s.io/external-dns/provider/dyn"
 	"sigs.k8s.io/external-dns/provider/exoscale"
+	"sigs.k8s.io/external-dns/provider/f5"
 	"sigs.k8s.io/external-dns/provider/godaddy"
 	"sigs.k8s.io/external-dns/provider/google"
 	"sigs.k8s.io/external-dns/provider/hetzner"
@@ -301,6 +302,19 @@ func main() {
 		p, err = scaleway.NewScalewayProvider(ctx, domainFilter, cfg.DryRun)
 	case "godaddy":
 		p, err = godaddy.NewGoDaddyProvider(ctx, domainFilter, cfg.GoDaddyTTL, cfg.GoDaddyAPIKey, cfg.GoDaddySecretKey, cfg.GoDaddyOTE, cfg.DryRun)
+	case "f5":
+		p, err = f5.NewF5DNSProvider(
+			&f5.F5DNSConfig{
+				DryRun:       cfg.DryRun,
+				DomainFilter: domainFilter,
+				Auth: f5.AuthConfig{
+					Username: cfg.F5DNSUsername,
+					Password: cfg.F5DNSPassword,
+				},
+				AccountID: cfg.F5DNSAccountID,
+			},
+			"",
+		)
 	default:
 		log.Fatalf("unknown dns provider: %s", cfg.Provider)
 	}

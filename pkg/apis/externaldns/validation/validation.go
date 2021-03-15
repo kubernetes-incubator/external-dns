@@ -106,5 +106,17 @@ func ValidateConfig(cfg *externaldns.Config) error {
 		return errors.New("txt-prefix and txt-suffix are mutual exclusive")
 	}
 
+	if cfg.Provider == "f5" {
+		if cfg.F5DNSAccountID == "" {
+			return errors.New("f5-dns-account-id not specified")
+		}
+		if cfg.F5DNSUsername == "" {
+			return errors.New("f5-dns-username not specified")
+		}
+		if cfg.F5DNSPassword == "" {
+			return errors.New("f5-dns-password not specified")
+		}
+	}
+
 	return nil
 }

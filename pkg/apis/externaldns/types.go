@@ -160,6 +160,9 @@ type Config struct {
 	GoDaddySecretKey                  string `secure:"yes"`
 	GoDaddyTTL                        int64
 	GoDaddyOTE                        bool
+	F5DNSAccountID                    string
+	F5DNSUsername                     string
+	F5DNSPassword                     string `secure:"yes"`
 }
 
 var defaultConfig = &Config{
@@ -272,6 +275,9 @@ var defaultConfig = &Config{
 	GoDaddySecretKey:            "",
 	GoDaddyTTL:                  600,
 	GoDaddyOTE:                  false,
+	F5DNSAccountID:              "",
+	F5DNSUsername:               "",
+	F5DNSPassword:               "",
 }
 
 // NewConfig returns new Config object
@@ -352,7 +358,7 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("managed-record-types", "Comma separated list of record types to manage (default: A, CNAME) (supported records: CNAME, A, NS").Default("A", "CNAME").StringsVar(&cfg.ManagedDNSRecordTypes)
 
 	// Flags related to providers
-	app.Flag("provider", "The DNS provider where the DNS records will be created (required, options: aws, aws-sd, godaddy, google, azure, azure-dns, azure-private-dns, cloudflare, rcodezero, digitalocean, hetzner, dnsimple, akamai, infoblox, dyn, designate, coredns, skydns, inmemory, ovh, pdns, oci, exoscale, linode, rfc2136, ns1, transip, vinyldns, rdns, scaleway, vultr, ultradns)").Required().PlaceHolder("provider").EnumVar(&cfg.Provider, "aws", "aws-sd", "google", "azure", "azure-dns", "hetzner", "azure-private-dns", "alibabacloud", "cloudflare", "rcodezero", "digitalocean", "dnsimple", "akamai", "infoblox", "dyn", "designate", "coredns", "skydns", "inmemory", "ovh", "pdns", "oci", "exoscale", "linode", "rfc2136", "ns1", "transip", "vinyldns", "rdns", "scaleway", "vultr", "ultradns", "godaddy")
+	app.Flag("provider", "The DNS provider where the DNS records will be created (required, options: aws, aws-sd, godaddy, google, azure, azure-dns, azure-private-dns, cloudflare, rcodezero, digitalocean, hetzner, dnsimple, akamai, infoblox, dyn, designate, coredns, skydns, inmemory, ovh, pdns, oci, exoscale, linode, rfc2136, ns1, transip, vinyldns, rdns, scaleway, vultr, ultradns)").Required().PlaceHolder("provider").EnumVar(&cfg.Provider, "aws", "aws-sd", "google", "azure", "azure-dns", "hetzner", "azure-private-dns", "alibabacloud", "cloudflare", "rcodezero", "digitalocean", "dnsimple", "akamai", "infoblox", "dyn", "designate", "coredns", "skydns", "inmemory", "ovh", "pdns", "oci", "exoscale", "linode", "rfc2136", "ns1", "transip", "vinyldns", "rdns", "scaleway", "vultr", "ultradns", "godaddy", "f5")
 	app.Flag("domain-filter", "Limit possible target zones by a domain suffix; specify multiple times for multiple domains (optional)").Default("").StringsVar(&cfg.DomainFilter)
 	app.Flag("exclude-domains", "Exclude subdomains (optional)").Default("").StringsVar(&cfg.ExcludeDomains)
 	app.Flag("zone-name-filter", "Filter target zones by zone domain (For now, only AzureDNS provider is using this flag); specify multiple times for multiple zones (optional)").Default("").StringsVar(&cfg.ZoneNameFilter)
@@ -440,6 +446,11 @@ func (cfg *Config) ParseFlags(args []string) error {
 	// Flags related to TransIP provider
 	app.Flag("transip-account", "When using the TransIP provider, specify the account name (required when --provider=transip)").Default(defaultConfig.TransIPAccountName).StringVar(&cfg.TransIPAccountName)
 	app.Flag("transip-keyfile", "When using the TransIP provider, specify the path to the private key file (required when --provider=transip)").Default(defaultConfig.TransIPPrivateKeyFile).StringVar(&cfg.TransIPPrivateKeyFile)
+
+	// Flags for F5 provider
+	app.Flag("f5-dns-account-id", "When using the F5 provider, specify the F5 DNS Account (required when --provider=f5)").Default(defaultConfig.F5DNSAccountID).StringVar(&cfg.F5DNSAccountID)
+	app.Flag("f5-dns-username", "When using the F5 provider, specify the F5 DNS Account holder's username (required when --provider=f5)").Default(defaultConfig.F5DNSUsername).StringVar(&cfg.F5DNSUsername)
+	app.Flag("f5-dns-password", "When using the F5 provider, specify the F5 DNS Account holder's password (required when --provider=f5)").Default(defaultConfig.F5DNSPassword).StringVar(&cfg.F5DNSPassword)
 
 	// Flags related to policies
 	app.Flag("policy", "Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)").Default(defaultConfig.Policy).EnumVar(&cfg.Policy, "sync", "upsert-only", "create-only")
