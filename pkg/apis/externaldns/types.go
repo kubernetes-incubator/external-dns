@@ -154,6 +154,10 @@ type Config struct {
 	NS1MinTTLSeconds                  int
 	TransIPAccountName                string
 	TransIPPrivateKeyFile             string
+	InwxUsername                      string
+	InwxPassword                      string `secure:"yes"`
+	InwxSandbox                       bool
+	InwxReloadInterval                time.Duration
 	DigitalOceanAPIPageSize           int
 	ManagedDNSRecordTypes             []string
 	GoDaddyAPIKey                     string `secure:"yes"`
@@ -266,6 +270,10 @@ var defaultConfig = &Config{
 	NS1IgnoreSSL:                false,
 	TransIPAccountName:          "",
 	TransIPPrivateKeyFile:       "",
+	InwxUsername:                "",
+	InwxPassword:                "",
+	InwxSandbox:                 false,
+	InwxReloadInterval:          time.Hour,
 	DigitalOceanAPIPageSize:     50,
 	ManagedDNSRecordTypes:       []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
 	GoDaddyAPIKey:               "",
@@ -352,7 +360,7 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("managed-record-types", "Comma separated list of record types to manage (default: A, CNAME) (supported records: CNAME, A, NS").Default("A", "CNAME").StringsVar(&cfg.ManagedDNSRecordTypes)
 
 	// Flags related to providers
-	app.Flag("provider", "The DNS provider where the DNS records will be created (required, options: aws, aws-sd, godaddy, google, azure, azure-dns, azure-private-dns, cloudflare, rcodezero, digitalocean, hetzner, dnsimple, akamai, infoblox, dyn, designate, coredns, skydns, inmemory, ovh, pdns, oci, exoscale, linode, rfc2136, ns1, transip, vinyldns, rdns, scaleway, vultr, ultradns)").Required().PlaceHolder("provider").EnumVar(&cfg.Provider, "aws", "aws-sd", "google", "azure", "azure-dns", "hetzner", "azure-private-dns", "alibabacloud", "cloudflare", "rcodezero", "digitalocean", "dnsimple", "akamai", "infoblox", "dyn", "designate", "coredns", "skydns", "inmemory", "ovh", "pdns", "oci", "exoscale", "linode", "rfc2136", "ns1", "transip", "vinyldns", "rdns", "scaleway", "vultr", "ultradns", "godaddy")
+	app.Flag("provider", "The DNS provider where the DNS records will be created (required, options: aws, aws-sd, godaddy, google, azure, azure-dns, azure-private-dns, cloudflare, rcodezero, digitalocean, hetzner, dnsimple, akamai, infoblox, dyn, designate, coredns, skydns, inmemory, ovh, pdns, oci, exoscale, linode, rfc2136, ns1, transip, vinyldns, rdns, scaleway, vultr, ultradns, inwx)").Required().PlaceHolder("provider").EnumVar(&cfg.Provider, "aws", "aws-sd", "google", "azure", "azure-dns", "hetzner", "azure-private-dns", "alibabacloud", "cloudflare", "rcodezero", "digitalocean", "dnsimple", "akamai", "infoblox", "dyn", "designate", "coredns", "skydns", "inmemory", "ovh", "pdns", "oci", "exoscale", "linode", "rfc2136", "ns1", "transip", "vinyldns", "rdns", "scaleway", "vultr", "ultradns", "godaddy", "inwx")
 	app.Flag("domain-filter", "Limit possible target zones by a domain suffix; specify multiple times for multiple domains (optional)").Default("").StringsVar(&cfg.DomainFilter)
 	app.Flag("exclude-domains", "Exclude subdomains (optional)").Default("").StringsVar(&cfg.ExcludeDomains)
 	app.Flag("zone-name-filter", "Filter target zones by zone domain (For now, only AzureDNS provider is using this flag); specify multiple times for multiple zones (optional)").Default("").StringsVar(&cfg.ZoneNameFilter)
@@ -406,6 +414,10 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("pdns-tls-enabled", "When using the PowerDNS/PDNS provider, specify whether to use TLS (default: false, requires --tls-ca, optionally specify --tls-client-cert and --tls-client-cert-key)").Default(strconv.FormatBool(defaultConfig.PDNSTLSEnabled)).BoolVar(&cfg.PDNSTLSEnabled)
 	app.Flag("ns1-endpoint", "When using the NS1 provider, specify the URL of the API endpoint to target (default: https://api.nsone.net/v1/)").Default(defaultConfig.NS1Endpoint).StringVar(&cfg.NS1Endpoint)
 	app.Flag("ns1-ignoressl", "When using the NS1 provider, specify whether to verify the SSL certificate (default: false)").Default(strconv.FormatBool(defaultConfig.NS1IgnoreSSL)).BoolVar(&cfg.NS1IgnoreSSL)
+	app.Flag("inwx-username", "When using the INWX provider, specify the username").Default(defaultConfig.InwxUsername).StringVar(&cfg.InwxUsername)
+	app.Flag("inwx-password", "When using the INWX provider, specify the password").Default(defaultConfig.InwxPassword).StringVar(&cfg.InwxPassword)
+	app.Flag("inwx-sandbox", "When using the INWX provider, specify whether the sandbox should be used or not (default: false)").Default(strconv.FormatBool(defaultConfig.InwxSandbox)).BoolVar(&cfg.InwxSandbox)
+	app.Flag("inwx-reload-interval", "When using the INWX provider, specify when the records should be reloaded from INWX (in duration format).").Default(defaultConfig.InwxReloadInterval.String()).DurationVar(&cfg.InwxReloadInterval)
 	app.Flag("ns1-min-ttl", "Minimal TTL (in seconds) for records. This value will be used if the provided TTL for a service/ingress is lower than this.").IntVar(&cfg.NS1MinTTLSeconds)
 	app.Flag("digitalocean-api-page-size", "Configure the page size used when querying the DigitalOcean API.").Default(strconv.Itoa(defaultConfig.DigitalOceanAPIPageSize)).IntVar(&cfg.DigitalOceanAPIPageSize)
 	// GoDaddy flags

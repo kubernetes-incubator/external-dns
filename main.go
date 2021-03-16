@@ -51,6 +51,7 @@ import (
 	"sigs.k8s.io/external-dns/provider/hetzner"
 	"sigs.k8s.io/external-dns/provider/infoblox"
 	"sigs.k8s.io/external-dns/provider/inmemory"
+	"sigs.k8s.io/external-dns/provider/inwx"
 	"sigs.k8s.io/external-dns/provider/linode"
 	"sigs.k8s.io/external-dns/provider/ns1"
 	"sigs.k8s.io/external-dns/provider/oci"
@@ -230,6 +231,16 @@ func main() {
 				View:         cfg.InfobloxView,
 				MaxResults:   cfg.InfobloxMaxResults,
 				DryRun:       cfg.DryRun,
+			},
+		)
+	case "inwx":
+		p, err = inwx.NewInwxProvider(
+			inwx.InwxConfig{
+				Username:     cfg.InwxUsername,
+				Password:     cfg.InwxPassword,
+				Sandbox:      cfg.InwxSandbox,
+				DryRun:       cfg.DryRun,
+				DomainFilter: domainFilter,
 			},
 		)
 	case "dyn":

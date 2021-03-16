@@ -10,7 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/akamai/AkamaiOPEN-edgegrid-golang v1.0.0
-	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38 // indirect
+	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
 	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/kingpin v2.2.5+incompatible
 	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
@@ -24,7 +24,6 @@ require (
 	github.com/digitalocean/godo v1.36.0
 	github.com/dnsimple/dnsimple-go v0.60.0
 	github.com/exoscale/egoscale v0.18.1
-	github.com/fatih/structs v1.1.0 // indirect
 	github.com/ffledgling/pdns-go v0.0.0-20180219074714-524e7daccd99
 	github.com/golang/sync v0.0.0-20180314180146-1d60e4601c6f
 	github.com/google/go-cmp v0.4.1
@@ -37,6 +36,7 @@ require (
 	github.com/miekg/dns v1.1.36-0.20210109083720-731b191cabd1
 	github.com/nesv/go-dynect v0.6.0
 	github.com/nic-at/rc0go v1.1.1
+	github.com/nrdcg/goinwx v0.8.1
 	github.com/openshift/api v0.0.0-20200605231317-fb2a6ca106ae
 	github.com/openshift/client-go v0.0.0-20200608144219-584632b8fc73
 	github.com/oracle/oci-go-sdk v21.4.0+incompatible

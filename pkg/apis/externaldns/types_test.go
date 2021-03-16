@@ -105,6 +105,10 @@ var (
 		RcodezeroTXTEncrypt:         false,
 		TransIPAccountName:          "",
 		TransIPPrivateKeyFile:       "",
+		InwxUsername:                "",
+		InwxPassword:                "",
+		InwxSandbox:                 false,
+		InwxReloadInterval:          time.Hour,
 		DigitalOceanAPIPageSize:     50,
 		ManagedDNSRecordTypes:       []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
 	}
@@ -194,6 +198,10 @@ var (
 		TransIPPrivateKeyFile:       "/path/to/transip.key",
 		DigitalOceanAPIPageSize:     100,
 		ManagedDNSRecordTypes:       []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+		InwxUsername:                "user",
+		InwxPassword:                "password",
+		InwxSandbox:                 true,
+		InwxReloadInterval:          time.Minute,
 	}
 )
 
@@ -305,6 +313,10 @@ func TestParseFlags(t *testing.T) {
 				"--transip-account=transip",
 				"--transip-keyfile=/path/to/transip.key",
 				"--digitalocean-api-page-size=100",
+				"--inwx-username=user",
+				"--inwx-password=password",
+				"--inwx-sandbox",
+				"--inwx-reload-interval=1m",
 			},
 			envVars:  map[string]string{},
 			expected: overriddenConfig,
@@ -396,6 +408,10 @@ func TestParseFlags(t *testing.T) {
 				"EXTERNAL_DNS_TRANSIP_ACCOUNT":                 "transip",
 				"EXTERNAL_DNS_TRANSIP_KEYFILE":                 "/path/to/transip.key",
 				"EXTERNAL_DNS_DIGITALOCEAN_API_PAGE_SIZE":      "100",
+				"EXTERNAL_DNS_INWX_USERNAME":                   "user",
+				"EXTERNAL_DNS_INWX_PASSWORD":                   "password",
+				"EXTERNAL_DNS_INWX_SANDBOX":                    "1",
+				"EXTERNAL_DNS_INWX_RELOAD_INTERVAL":            "1m",
 			},
 			expected: overriddenConfig,
 		},
