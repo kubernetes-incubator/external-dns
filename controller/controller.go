@@ -105,6 +105,7 @@ func init() {
 // * Take both lists and calculate a Plan to move current towards desired state.
 // * Tell the DNS provider to apply the changes calculated by the Plan.
 type Controller struct {
+	OwnerID  string
 	Source   source.Source
 	Registry registry.Registry
 	// The policy that defines which changes to DNS records are allowed
@@ -145,6 +146,7 @@ func (c *Controller) RunOnce(ctx context.Context) error {
 
 	plan := &plan.Plan{
 		Policies:           []plan.Policy{c.Policy},
+		OwnerID:            c.OwnerID,
 		Current:            records,
 		Desired:            endpoints,
 		DomainFilter:       c.DomainFilter,

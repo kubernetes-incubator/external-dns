@@ -163,6 +163,7 @@ func (suite *PlanTestSuite) SetupTest() {
 		RecordType: "A",
 		Labels: map[string]string{
 			endpoint.ResourceLabelKey: "ingress/default/bar-192",
+			endpoint.OwnerLabelKey:    "pwner",
 		},
 	}
 	suite.multiple1 = &endpoint.Endpoint{
@@ -302,6 +303,7 @@ func (suite *PlanTestSuite) TestSyncSecondRoundWithProviderSpecificChange() {
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:        "",
 		Policies:       []Policy{&SyncPolicy{}},
 		Current:        current,
 		Desired:        desired,
@@ -324,6 +326,7 @@ func (suite *PlanTestSuite) TestSyncSecondRoundWithProviderSpecificDefaultFalse(
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:  "pwner",
 		Policies: []Policy{&SyncPolicy{}},
 		Current:  current,
 		Desired:  desired,
@@ -349,6 +352,7 @@ func (suite *PlanTestSuite) TestSyncSecondRoundWithProviderSpecificDefualtTrue()
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:  "pwner",
 		Policies: []Policy{&SyncPolicy{}},
 		Current:  current,
 		Desired:  desired,
@@ -383,6 +387,7 @@ func (suite *PlanTestSuite) TestSyncSecondRoundWithOwnerInherited() {
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:        "pwner",
 		Policies:       []Policy{&SyncPolicy{}},
 		Current:        current,
 		Desired:        desired,
@@ -405,6 +410,7 @@ func (suite *PlanTestSuite) TestIdempotency() {
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:  "pwner",
 		Policies: []Policy{&SyncPolicy{}},
 		Current:  current,
 		Desired:  desired,
@@ -426,6 +432,7 @@ func (suite *PlanTestSuite) TestDifferentTypes() {
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:        "pwner",
 		Policies:       []Policy{&SyncPolicy{}},
 		Current:        current,
 		Desired:        desired,
@@ -470,6 +477,7 @@ func (suite *PlanTestSuite) TestIgnoreTargetCase() {
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:  "pwner",
 		Policies: []Policy{&SyncPolicy{}},
 		Current:  current,
 		Desired:  desired,
@@ -491,6 +499,7 @@ func (suite *PlanTestSuite) TestRemoveEndpoint() {
 	expectedDelete := []*endpoint.Endpoint{suite.bar192A}
 
 	p := &Plan{
+		OwnerID:        "pwner",
 		Policies:       []Policy{&SyncPolicy{}},
 		Current:        current,
 		Desired:        desired,
@@ -513,6 +522,7 @@ func (suite *PlanTestSuite) TestRemoveEndpointWithUpsert() {
 	expectedDelete := []*endpoint.Endpoint{}
 
 	p := &Plan{
+		OwnerID:        "pwner",
 		Policies:       []Policy{&UpsertOnlyPolicy{}},
 		Current:        current,
 		Desired:        desired,
@@ -536,6 +546,7 @@ func (suite *PlanTestSuite) TestDuplicatedEndpointsForSameResourceReplace() {
 	expectedDelete := []*endpoint.Endpoint{suite.bar192A}
 
 	p := &Plan{
+		OwnerID:        "pwner",
 		Policies:       []Policy{&SyncPolicy{}},
 		Current:        current,
 		Desired:        desired,
@@ -560,6 +571,7 @@ func (suite *PlanTestSuite) TestDuplicatedEndpointsForSameResourceRetain() {
 	expectedDelete := []*endpoint.Endpoint{suite.bar192A}
 
 	p := &Plan{
+		OwnerID:        "pwner",
 		Policies:       []Policy{&SyncPolicy{}},
 		Current:        current,
 		Desired:        desired,
@@ -643,6 +655,126 @@ func (suite *PlanTestSuite) TestDomainFiltersInitial() {
 	validateEntries(suite.T(), changes.Delete, expectedDelete)
 }
 
+func (suite *PlanTestSuite) TestOwnerFiltered() {
+
+	p := &Plan{
+		OwnerID:        "owner",
+		DomainFilter:   endpoint.NewDomainFilter([]string{"domain.tld"}),
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+		Current: []*endpoint.Endpoint{
+			{
+				DNSName:       "foo.domain.tld",
+				Targets:       endpoint.Targets{"v3"},
+				RecordType:    "CNAME",
+				SetIdentifier: "identifier-1",
+				Labels: map[string]string{
+					endpoint.ResourceLabelKey: "ingress/default/foo-v1",
+					endpoint.OwnerLabelKey:    "owner",
+				},
+			},
+			{
+				DNSName:       "bar.domain.tld",
+				Targets:       endpoint.Targets{"v3"},
+				RecordType:    "CNAME",
+				SetIdentifier: "identifier-1",
+				Labels: map[string]string{
+					endpoint.ResourceLabelKey: "ingress/default/bar-v1",
+					endpoint.OwnerLabelKey:    "owner",
+				},
+			},
+			{
+				DNSName:       "foo.domain.tld",
+				Targets:       endpoint.Targets{"v3"},
+				RecordType:    "CNAME",
+				SetIdentifier: "identifier-2",
+				Labels: map[string]string{
+					endpoint.ResourceLabelKey: "ingress/default/foo-v1",
+					endpoint.OwnerLabelKey:    "other",
+				},
+			},
+			{
+				DNSName:       "bar.domain.tld",
+				Targets:       endpoint.Targets{"v3"},
+				RecordType:    "CNAME",
+				SetIdentifier: "identifier-2",
+				Labels: map[string]string{
+					endpoint.ResourceLabelKey: "ingress/default/bar-v1",
+					endpoint.OwnerLabelKey:    "other",
+				},
+			},
+		},
+		Desired: []*endpoint.Endpoint{
+			{
+				DNSName:       "new.domain.tld",
+				Targets:       endpoint.Targets{"127.0.0.2"},
+				RecordType:    "A",
+				SetIdentifier: "identifier-1",
+				Labels: map[string]string{
+					endpoint.ResourceLabelKey: "ingress/default/new-v1",
+				},
+			},
+			{
+				DNSName:       "bar.domain.tld",
+				Targets:       endpoint.Targets{"127.0.0.1"},
+				RecordType:    "A",
+				SetIdentifier: "identifier-1",
+				Labels: map[string]string{
+					endpoint.ResourceLabelKey: "ingress/default/bar-v1",
+				},
+			},
+		},
+	}
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, []*endpoint.Endpoint{
+		{
+			DNSName:       "new.domain.tld",
+			Targets:       endpoint.Targets{"127.0.0.2"},
+			RecordType:    "A",
+			SetIdentifier: "identifier-1",
+			Labels: map[string]string{
+				endpoint.ResourceLabelKey: "ingress/default/new-v1",
+				endpoint.OwnerLabelKey:    "owner",
+			},
+		},
+	})
+	validateEntries(suite.T(), changes.UpdateOld, []*endpoint.Endpoint{
+		{
+			DNSName:       "bar.domain.tld",
+			Targets:       endpoint.Targets{"v3"},
+			RecordType:    "CNAME",
+			SetIdentifier: "identifier-1",
+			Labels: map[string]string{
+				endpoint.ResourceLabelKey: "ingress/default/bar-v1",
+				endpoint.OwnerLabelKey:    "owner",
+			},
+		},
+	})
+	validateEntries(suite.T(), changes.UpdateNew, []*endpoint.Endpoint{
+		{
+			DNSName:       "bar.domain.tld",
+			Targets:       endpoint.Targets{"127.0.0.1"},
+			RecordType:    "A",
+			SetIdentifier: "identifier-1",
+			Labels: map[string]string{
+				endpoint.ResourceLabelKey: "ingress/default/bar-v1",
+				endpoint.OwnerLabelKey:    "owner",
+			},
+		},
+	})
+	validateEntries(suite.T(), changes.Delete, []*endpoint.Endpoint{
+		{
+			DNSName:       "foo.domain.tld",
+			Targets:       endpoint.Targets{"v3"},
+			RecordType:    "CNAME",
+			SetIdentifier: "identifier-1",
+			Labels: map[string]string{
+				endpoint.ResourceLabelKey: "ingress/default/foo-v1",
+				endpoint.OwnerLabelKey:    "owner",
+			},
+		},
+	})
+}
+
 func (suite *PlanTestSuite) TestDomainFiltersUpdate() {
 
 	current := []*endpoint.Endpoint{suite.domainFilterExcluded, suite.domainFilterFiltered1, suite.domainFilterFiltered2}
@@ -673,6 +805,9 @@ func TestPlan(t *testing.T) {
 
 // validateEntries validates that the list of entries matches expected.
 func validateEntries(t *testing.T, entries, expected []*endpoint.Endpoint) {
+	// This function is a test helper, by calling Helper() we ensure the error reported includes the caller line instead of this one.
+	// This makes test trouble shooting easier
+	t.Helper()
 	if !testutils.SameEndpoints(entries, expected) {
 		t.Fatalf("expected %q to match %q", entries, expected)
 	}

@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"sigs.k8s.io/external-dns/endpoint"
 )
 
@@ -30,6 +32,8 @@ type PropertyComparator func(name string, previous string, current string) bool
 // Plan can convert a list of desired and current records to a series of create,
 // update and delete actions.
 type Plan struct {
+	// Plan owner operating the changes
+	OwnerID string
 	// List of current records
 	Current []*endpoint.Endpoint
 	// List of desired records
@@ -133,22 +137,30 @@ func (p *Plan) Calculate() *Plan {
 	for _, topRow := range t.rows {
 		for _, row := range topRow {
 			if row.current == nil { //dns name not taken
-				changes.Create = append(changes.Create, t.resolver.ResolveCreate(row.candidates))
-			}
-			if row.current != nil && len(row.candidates) == 0 {
-				changes.Delete = append(changes.Delete, row.current)
-			}
-
-			// TODO: allows record type change, which might not be supported by all dns providers
-			if row.current != nil && len(row.candidates) > 0 { //dns name is taken
-				update := t.resolver.ResolveUpdate(row.current, row.candidates)
-				// compare "update" to "current" to figure out if actual update is required
-				if shouldUpdateTTL(update, row.current) || targetChanged(update, row.current) || p.shouldUpdateProviderSpecific(update, row.current) {
-					inheritOwner(row.current, update)
-					changes.UpdateNew = append(changes.UpdateNew, update)
-					changes.UpdateOld = append(changes.UpdateOld, row.current)
+				create := t.resolver.ResolveCreate(row.candidates)
+				if create.Labels == nil {
+					create.Labels = endpoint.Labels{}
 				}
-				continue
+				create.Labels[endpoint.OwnerLabelKey] = p.OwnerID
+				changes.Create = append(changes.Create, t.resolver.ResolveCreate(row.candidates))
+			} else { // dns name is taken
+				if endpointOwner := row.current.Labels[endpoint.OwnerLabelKey]; endpointOwner != p.OwnerID {
+					log.Debugf(`Skipping endpoint %v update because owner id does not match, found: "%s", required: "%s"`, row.current, endpointOwner, p.OwnerID)
+					continue
+				}
+				if len(row.candidates) == 0 {
+					changes.Delete = append(changes.Delete, row.current)
+				} else {
+					// TODO: allows record type change, which might not be supported by all dns providers
+					update := t.resolver.ResolveUpdate(row.current, row.candidates)
+					// compare "update" to "current" to figure out if actual update is required
+					if shouldUpdateTTL(update, row.current) || targetChanged(update, row.current) || p.shouldUpdateProviderSpecific(update, row.current) {
+						inheritOwner(row.current, update)
+						changes.UpdateNew = append(changes.UpdateNew, update)
+						changes.UpdateOld = append(changes.UpdateOld, row.current)
+					}
+					continue
+				}
 			}
 		}
 	}

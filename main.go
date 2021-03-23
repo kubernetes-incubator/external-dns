@@ -317,9 +317,9 @@ func main() {
 	case "noop":
 		r, err = registry.NewNoopRegistry(p)
 	case "txt":
-		r, err = registry.NewTXTRegistry(p, cfg.TXTPrefix, cfg.TXTSuffix, cfg.TXTOwnerID, cfg.TXTCacheInterval, cfg.TXTWildcardReplacement)
+		r, err = registry.NewTXTRegistry(p, cfg.TXTPrefix, cfg.TXTSuffix, cfg.TXTCacheInterval, cfg.TXTWildcardReplacement)
 	case "aws-sd":
-		r, err = registry.NewAWSSDRegistry(p.(*awssd.AWSSDProvider), cfg.TXTOwnerID)
+		r, err = registry.NewAWSSDRegistry(p.(*awssd.AWSSDProvider))
 	default:
 		log.Fatalf("unknown registry: %s", cfg.Registry)
 	}
@@ -334,6 +334,7 @@ func main() {
 	}
 
 	ctrl := controller.Controller{
+		OwnerID:            cfg.TXTOwnerID,
 		Source:             endpointsSource,
 		Registry:           r,
 		Policy:             policy,

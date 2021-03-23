@@ -18,6 +18,7 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,6 +45,18 @@ func (p *inMemoryProvider) ApplyChanges(ctx context.Context, changes *plan.Chang
 	return nil
 }
 
+type erroredRecordsProvider struct {
+	provider.BaseProvider
+}
+
+func (p *erroredRecordsProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
+	return nil, errors.New("testing-error")
+}
+
+func (p *erroredRecordsProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
+	return errors.New("testing-error")
+}
+
 func newInMemoryProvider(endpoints []*endpoint.Endpoint, onApplyChanges func(changes *plan.Changes)) *inMemoryProvider {
 	return &inMemoryProvider{
 		endpoints:      endpoints,
@@ -53,10 +66,8 @@ func newInMemoryProvider(endpoints []*endpoint.Endpoint, onApplyChanges func(cha
 
 func TestAWSSDRegistry_NewAWSSDRegistry(t *testing.T) {
 	p := newInMemoryProvider(nil, nil)
-	_, err := NewAWSSDRegistry(p, "")
-	require.Error(t, err)
 
-	_, err = NewAWSSDRegistry(p, "owner")
+	_, err := NewAWSSDRegistry(p)
 	require.NoError(t, err)
 }
 
@@ -102,10 +113,16 @@ func TestAWSSDRegistryTest_Records(t *testing.T) {
 		},
 	}
 
-	r, _ := NewAWSSDRegistry(p, "owner")
+	r, _ := NewAWSSDRegistry(p)
 	records, _ := r.Records(context.Background())
 
 	assert.True(t, testutils.SameEndpoints(records, expectedRecords))
+
+	r, err := NewAWSSDRegistry(&erroredRecordsProvider{})
+	require.NoError(t, err)
+	records, err = r.Records(context.Background())
+	assert.Nil(t, records)
+	assert.Error(t, err)
 }
 
 func TestAWSSDRegistry_Records_ApplyChanges(t *testing.T) {
@@ -152,7 +169,7 @@ func TestAWSSDRegistry_Records_ApplyChanges(t *testing.T) {
 		}
 		assert.True(t, testutils.SamePlanChanges(mGot, mExpected))
 	})
-	r, err := NewAWSSDRegistry(p, "owner")
+	r, err := NewAWSSDRegistry(p)
 	require.NoError(t, err)
 
 	err = r.ApplyChanges(context.Background(), changes)

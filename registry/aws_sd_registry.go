@@ -18,7 +18,6 @@ package registry
 
 import (
 	"context"
-	"errors"
 
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
@@ -28,17 +27,12 @@ import (
 // AWSSDRegistry implements registry interface with ownership information associated via the Description field of SD Service
 type AWSSDRegistry struct {
 	provider provider.Provider
-	ownerID  string
 }
 
 // NewAWSSDRegistry returns implementation of registry for AWS SD
-func NewAWSSDRegistry(provider provider.Provider, ownerID string) (*AWSSDRegistry, error) {
-	if ownerID == "" {
-		return nil, errors.New("owner id cannot be empty")
-	}
+func NewAWSSDRegistry(provider provider.Provider) (*AWSSDRegistry, error) {
 	return &AWSSDRegistry{
 		provider: provider,
-		ownerID:  ownerID,
 	}, nil
 }
 
@@ -66,24 +60,16 @@ func (sdr *AWSSDRegistry) Records(ctx context.Context) ([]*endpoint.Endpoint, er
 // ApplyChanges filters out records not owned the External-DNS, additionally it adds the required label
 // inserted in the AWS SD instance as a CreateID field
 func (sdr *AWSSDRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
-	filteredChanges := &plan.Changes{
-		Create:    changes.Create,
-		UpdateNew: filterOwnedRecords(sdr.ownerID, changes.UpdateNew),
-		UpdateOld: filterOwnedRecords(sdr.ownerID, changes.UpdateOld),
-		Delete:    filterOwnedRecords(sdr.ownerID, changes.Delete),
-	}
+	sdr.updateLabels(changes.Create)
+	sdr.updateLabels(changes.UpdateNew)
+	sdr.updateLabels(changes.UpdateOld)
+	sdr.updateLabels(changes.Delete)
 
-	sdr.updateLabels(filteredChanges.Create)
-	sdr.updateLabels(filteredChanges.UpdateNew)
-	sdr.updateLabels(filteredChanges.UpdateOld)
-	sdr.updateLabels(filteredChanges.Delete)
-
-	return sdr.provider.ApplyChanges(ctx, filteredChanges)
+	return sdr.provider.ApplyChanges(ctx, changes)
 }
 
 func (sdr *AWSSDRegistry) updateLabels(endpoints []*endpoint.Endpoint) {
 	for _, ep := range endpoints {
-		ep.Labels[endpoint.OwnerLabelKey] = sdr.ownerID
 		ep.Labels[endpoint.AWSSDDescriptionLabel] = ep.Labels.Serialize(false)
 	}
 }

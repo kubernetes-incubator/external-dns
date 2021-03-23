@@ -1066,8 +1066,8 @@ func TestProviderPropertiesIdempotency(t *testing.T) {
 		assert.Equal(t, 0, len(plan.Changes.Delete), "should not have deletes")
 
 		if test.ShouldBeUpdated {
-			assert.Equal(t, 1, len(plan.Changes.UpdateNew), "should not have new updates")
-			assert.Equal(t, 1, len(plan.Changes.UpdateOld), "should not have old updates")
+			assert.Equal(t, 1, len(plan.Changes.UpdateNew), "should have new updates")
+			assert.Equal(t, 1, len(plan.Changes.UpdateOld), "should have old updates")
 		} else {
 			assert.Equal(t, 0, len(plan.Changes.UpdateNew), "should not have new updates")
 			assert.Equal(t, 0, len(plan.Changes.UpdateOld), "should not have old updates")
