@@ -321,7 +321,7 @@ func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname stri
 							}
 						}
 					} else {
-						log.Debugf("Pod %s is not running", pod.Spec.Hostname)
+						log.Debugf("Pod %s/%s is not running", pod.GetNamespace(), pod.GetName())
 						return nil
 					}
 				} else if sc.publishHostIP {
