@@ -308,19 +308,21 @@ func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname stri
 			for _, headlessDomain := range headlessDomains {
 				var ep string
 				if sc.publishHostIP && externalIP {
-					node, err := sc.nodeInformer.Lister().Get(pod.Spec.NodeName)
-					if err != nil {
-						return nil
-					}
 					if pod.Status.Phase == v1.PodRunning {
+						node, err := sc.nodeInformer.Lister().Get(pod.Spec.NodeName)
+						if err != nil {
+							log.Debugf("Unable to find node where Pod %s is running", pod.Spec.Hostname)
+							return nil
+						}
 						for _, x := range node.Status.Addresses {
 							if x.Type == v1.NodeExternalIP {
-								log.Debugf("Generating matching endpoint %s with External %s", headlessDomain, x.Address)
+								log.Debugf("Generating matching endpoint %s with NodeExternalIP %s", headlessDomain, x.Address)
 								targetsByHeadlessDomain[headlessDomain] = append(targetsByHeadlessDomain[headlessDomain], x.Address)
 							}
 						}
 					} else {
-						log.Debugf("Pod %s is not in running phase", pod.Spec.Hostname)
+						log.Debugf("Pod %s is not running", pod.Spec.Hostname)
+						return nil
 					}
 				} else if sc.publishHostIP {
 					ep = pod.Status.HostIP
