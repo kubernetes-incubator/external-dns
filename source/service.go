@@ -59,6 +59,7 @@ type serviceSource struct {
 	ignoreHostnameAnnotation       bool
 	publishInternal                bool
 	publishHostIP                  bool
+	suppressHeadlessRoot           bool
 	alwaysPublishNotReadyAddresses bool
 	serviceInformer                coreinformers.ServiceInformer
 	endpointsInformer              coreinformers.EndpointsInformer
@@ -68,7 +69,7 @@ type serviceSource struct {
 }
 
 // NewServiceSource creates a new serviceSource with the given config.
-func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilter string, fqdnTemplate string, combineFqdnAnnotation bool, compatibility string, publishInternal bool, publishHostIP bool, alwaysPublishNotReadyAddresses bool, serviceTypeFilter []string, ignoreHostnameAnnotation bool) (Source, error) {
+func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilter string, fqdnTemplate string, combineFqdnAnnotation bool, compatibility string, publishInternal bool, publishHostIP bool, suppressHeadlessRoot bool, alwaysPublishNotReadyAddresses bool, serviceTypeFilter []string, ignoreHostnameAnnotation bool) (Source, error) {
 	var (
 		tmpl *template.Template
 		err  error
@@ -147,6 +148,7 @@ func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilt
 		ignoreHostnameAnnotation:       ignoreHostnameAnnotation,
 		publishInternal:                publishInternal,
 		publishHostIP:                  publishHostIP,
+		suppressHeadlessRoot:           suppressHeadlessRoot,
 		alwaysPublishNotReadyAddresses: alwaysPublishNotReadyAddresses,
 		serviceInformer:                serviceInformer,
 		endpointsInformer:              endpointsInformer,
@@ -301,6 +303,9 @@ func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname stri
 			}
 
 			headlessDomains := []string{hostname}
+			if sc.suppressHeadlessRoot {
+				headlessDomains = []string{}
+			}
 			if pod.Spec.Hostname != "" {
 				headlessDomains = append(headlessDomains, fmt.Sprintf("%s.%s", pod.Spec.Hostname, hostname))
 			}
