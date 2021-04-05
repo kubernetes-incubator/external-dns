@@ -536,17 +536,16 @@ func (p *AWSProvider) submitChanges(ctx context.Context, changes []*route53.Chan
 				successfulChanges := 0
 
 				if _, err := p.client.ChangeResourceRecordSetsWithContext(ctx, params); err != nil {
-					log.Errorf("Failure in zone %s [Id: %s] when submitting change batch", aws.StringValue(zones[z].Name), z)
-					log.Error(err)
+					log.Errorf("Failure in zone %s [Id: %s] when submitting change batch: %v", aws.StringValue(zones[z].Name), z, err)
 
 					changesByOwnership := groupChangesByNameAndOwnership(b)
 
 					if len(changesByOwnership) > 1 {
-						log.Error("Trying to submit change sets one-by-one instead")
+						log.Debug("Trying to submit change sets one-by-one instead")
 
 						for _, changes := range changesByOwnership {
 							for _, c := range changes {
-								log.Infof("Desired change: %s %s %s [Id: %s]", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, z)
+								log.Debugf("Desired change: %s %s %s [Id: %s]", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, z)
 							}
 							params.ChangeBatch = &route53.ChangeBatch{
 								Changes: ownedRecordRemoved(changes),
@@ -560,7 +559,6 @@ func (p *AWSProvider) submitChanges(ctx context.Context, changes []*route53.Chan
 									p.failedChangesQueue[z] = append(p.failedChangesQueue[z], changes...)
 								}
 							} else {
-								log.Info("Change(s) successful")
 								successfulChanges = successfulChanges + len(changes)
 							}
 						}
