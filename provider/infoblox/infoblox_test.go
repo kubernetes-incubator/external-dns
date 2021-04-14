@@ -343,6 +343,52 @@ func createMockInfobloxObject(name, recordType, value string) ibclient.IBObject 
 	return nil
 }
 
+func createMockInfobloxObject2(name, recordType, value string, value2 string) ibclient.IBObject {
+	ref := fmt.Sprintf("record:%s/%s:%s/default", strings.ToLower(recordType), base64.StdEncoding.EncodeToString([]byte(name)), name)
+	switch recordType {
+	case endpoint.RecordTypeA:
+		return ibclient.NewRecordA(
+			ibclient.RecordA{
+				Ref:      ref,
+				Name:     name,
+				Ipv4Addr: value,
+			},
+		)
+	case endpoint.RecordTypeCNAME:
+		return ibclient.NewRecordCNAME(
+			ibclient.RecordCNAME{
+				Ref:       ref,
+				Name:      name,
+				Canonical: value,
+			},
+		)
+	case endpoint.RecordTypeTXT:
+		return ibclient.NewRecordTXT(
+			ibclient.RecordTXT{
+				Ref:  ref,
+				Name: name,
+				Text: value,
+			},
+		)
+	case "HOST":
+		return ibclient.NewHostRecord(
+			ibclient.HostRecord{
+				Ref:  ref,
+				Name: name,
+				Ipv4Addrs: []ibclient.HostRecordIpv4Addr{
+					{
+						Ipv4Addr: value,
+					},
+					{
+						Ipv4Addr: value2,
+					},
+				},
+			},
+		)
+	}
+	return nil
+}
+
 func newInfobloxProvider(domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, dryRun bool, client ibclient.IBConnector) *InfobloxProvider {
 	return &InfobloxProvider{
 		client:       client,
@@ -366,8 +412,9 @@ func TestInfobloxRecords(t *testing.T) {
 			createMockInfobloxObject("whitespace.example.com", endpoint.RecordTypeA, "123.123.123.124"),
 			createMockInfobloxObject("whitespace.example.com", endpoint.RecordTypeTXT, "heritage=external-dns,external-dns/owner=white space"),
 			createMockInfobloxObject("hack.example.com", endpoint.RecordTypeCNAME, "cerberus.infoblox.com"),
-			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeA, "123.123.123.122"),
-			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeA, "123.123.123.121"),
+			createMockInfobloxObject2("multiple.example.com", "HOST", "123.123.123.121", "123.123.123.122"),
+			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeA, "123.123.123.123"),
+			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeA, "123.123.123.124"),
 			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeTXT, "heritage=external-dns,external-dns/owner=default"),
 			createMockInfobloxObject("existing.example.com", endpoint.RecordTypeA, "124.1.1.1"),
 			createMockInfobloxObject("existing.example.com", endpoint.RecordTypeA, "124.1.1.2"),
@@ -390,7 +437,7 @@ func TestInfobloxRecords(t *testing.T) {
 		endpoint.NewEndpoint("whitespace.example.com", endpoint.RecordTypeA, "123.123.123.124"),
 		endpoint.NewEndpoint("whitespace.example.com", endpoint.RecordTypeTXT, "\"heritage=external-dns,external-dns/owner=white space\""),
 		endpoint.NewEndpoint("hack.example.com", endpoint.RecordTypeCNAME, "cerberus.infoblox.com"),
-		endpoint.NewEndpoint("multiple.example.com", endpoint.RecordTypeA, "123.123.123.122", "123.123.123.121"),
+		endpoint.NewEndpoint("multiple.example.com", endpoint.RecordTypeA, "123.123.123.121", "123.123.123.122", "123.123.123.123", "123.123.123.124"),
 		endpoint.NewEndpoint("multiple.example.com", endpoint.RecordTypeTXT, "\"heritage=external-dns,external-dns/owner=default\""),
 		endpoint.NewEndpoint("existing.example.com", endpoint.RecordTypeA, "124.1.1.1", "124.1.1.2"),
 		endpoint.NewEndpoint("existing.example.com", endpoint.RecordTypeTXT, "\"heritage=external-dns,external-dns/owner=existing\""),
