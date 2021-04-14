@@ -265,9 +265,6 @@ func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 			}
 		}
 		}
-		for _, ep := range endpoints {
-			sort.Sort(ep.Targets)
-		}
 	}
 	logrus.Debugf("fetched %d records from infoblox", len(endpoints))
 	return endpoints, nil
