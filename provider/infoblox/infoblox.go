@@ -279,10 +279,8 @@ func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 				endpoints = append(endpoints, endpoint.NewEndpoint(a.DNSName, endpoint.RecordTypeA, targets...))
 			}
 		}
-		// logrus.Debugf("List Endpoints, after concatenate and sort of A-records")
 		for _, ep := range endpoints {
 			sort.Sort(ep.Targets)
-			// logrus.Debugf("Record='%s' '%s':'%s'", ep.DNSName, ep.RecordType, ep.Targets)
 		}
 	}
 	logrus.Debugf("fetched %d records from infoblox", len(endpoints))
