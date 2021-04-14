@@ -252,32 +252,18 @@ func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 
 		// Concatenate A-records with same dnsname
 		sort.Sort(byDNSName(endpointsTypeA))
-		idc := int(-1)
-		for id1, a := range endpointsTypeA {
-			if id1 > idc {
-				var targets endpoint.Targets
-				for _, target := range a.Targets {
-					logrus.Debugf("DEBUG New Record:'%d':'%s':'%d'-'%s':'%s'", id1, "-", idc, a.DNSName, target)
-					if len(targets) == 0 {
-						targets = endpoint.NewTargets(target)
-					} else {
-						targets = append(targets, target)
-					}
-				}
-				for id2, b := range endpointsTypeA {
-					if id2 > id1 && a.DNSName == b.DNSName {
-						for _, target := range b.Targets {
-							logrus.Debugf("DEBUG Add Record:'%d':'%d':'%d'-'%s':'%s'", id1, id2, idc, a.DNSName, target)
-							targets = append(targets, target)
-						}
-						idc = id2
-					}
-				}
-				if idc < id1 {
-					idc = id1
-				}
-				endpoints = append(endpoints, endpoint.NewEndpoint(a.DNSName, endpoint.RecordTypeA, targets...))
+		var runner *endpoint.Endpoint
+		for _, endpoint := range endpointsTypeA {
+			if runner == nil || endpoint.DNSName != runner.DNSName {
+				// add unique to collection
+				endpoints = append(endpoints, endpoint)
+				runner = endpoint
+			} else {
+				// add targets of double entries and sort it
+				runner.Targets = append(runner.Targets, endpoint.Targets...)
+				sort.Sort(runner.Targets)
 			}
+		}
 		}
 		for _, ep := range endpoints {
 			sort.Sort(ep.Targets)
