@@ -167,3 +167,46 @@ spec:
 The above Ingress object will result in the creation of an ALB with a dualstack
 interface. ExternalDNS will create both an A `echoserver.example.org` record and
 an AAAA record of the same name, that each are aliases for the same ALB.
+
+## Dualstack NLBs
+
+[AWS Load Balancer Controller][5] satisifies service of "LoadBalancer"
+type with annotation `service.beta.kubernetes.io/aws-load-balancer-type` value
+`nlb-ip`.  This service supports dualstack mode via
+`service.beta.kubernetes.io/aws-load-balancer-ip-address-type` [annotation][6]
+(which defaults to `ipv4`). If this annotation is set to `dualstack` then
+ExternalDNS will create two alias records (one A record and one AAAA record)
+for each hostname associated with the Ingress object.
+
+[5]: https://github.com/kubernetes-sigs/aws-load-balancer-controller#aws-load-balancer-controller
+[6]: https://github.com/kubernetes-sigs/aws-load-balancer-controller/blob/main/docs/guide/service/annotations.md
+
+Example:
+
+```yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-svc
+  labels:
+    app.kubernetes.io/name: my-app
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: foo.example.com
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb-ip"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    service.beta.kubernetes.io/aws-load-balancer-ip-address-type: "dualstack"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: my-app
+```
+
+The above Service object will result in the creation of an NLB with a dualstack
+interface. ExternalDNS will create both an A `echoserver.example.org` record and
+an AAAA record of the same name, that each are aliases for the same NLB.

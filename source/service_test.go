@@ -62,9 +62,11 @@ func (suite *ServiceSuite) SetupTest() {
 			Type: v1.ServiceTypeLoadBalancer,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "default",
-			Name:        "foo-with-targets",
-			Annotations: map[string]string{},
+			Namespace: "default",
+			Name:      "foo-with-targets",
+			Annotations: map[string]string{
+				NLBDualstackAnnotationKey: NLBDualstackAnnotationValue,
+			},
 		},
 		Status: v1.ServiceStatus{
 			LoadBalancer: v1.LoadBalancerStatus{
@@ -2855,6 +2857,13 @@ func TestExternalServices(t *testing.T) {
 			// Validate returned endpoints against desired endpoints.
 			validateEndpoints(t, endpoints, tc.expected)
 		})
+	}
+}
+
+func (suite *ServiceSuite) TestDualstackLabelIsSet() {
+	endpoints, _ := suite.sc.Endpoints(context.TODO())
+	for _, ep := range endpoints {
+		suite.Equal("true", ep.Labels[endpoint.DualstackLabelKey], "should set dualstack label to true")
 	}
 }
 
