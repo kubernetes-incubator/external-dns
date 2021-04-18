@@ -53,6 +53,7 @@ func (suite *IngressSuite) SetupTest() {
 		false,
 		false,
 		false,
+		[]string{},
 	)
 	suite.NoError(err, "should initialize ingress source")
 
@@ -136,6 +137,7 @@ func TestNewIngressSource(t *testing.T) {
 				ti.combineFQDNAndAnnotation,
 				false,
 				false,
+				[]string{},
 			)
 			if ti.expectError {
 				assert.Error(t, err)
@@ -241,6 +243,7 @@ func testIngressEndpoints(t *testing.T) {
 		combineFQDNAndAnnotation bool
 		ignoreHostnameAnnotation bool
 		ignoreIngressTLSSpec     bool
+		ingressClassNameFilter   []string
 	}{
 		{
 			title:           "no ingress",
@@ -1029,6 +1032,33 @@ func testIngressEndpoints(t *testing.T) {
 				},
 			},
 		},
+		{
+			title:                  "ingressClassName filtering",
+			targetNamespace:        "",
+			ingressClassNameFilter: []string{"public"},
+			ingressItems: []fakeIngress{
+				{
+					name:             "fake-public",
+					namespace:        namespace,
+					tlsdnsnames:      [][]string{{"example.org"}},
+					ips:              []string{"1.2.3.4"},
+					ingressClassName: "public",
+				},
+				{
+					name:             "fake-internal",
+					namespace:        namespace,
+					tlsdnsnames:      [][]string{{"int.example.org"}},
+					ips:              []string{"2.3.4.5"},
+					ingressClassName: "internal",
+				},
+			},
+			expected: []*endpoint.Endpoint{
+				{
+					DNSName: "example.org",
+					Targets: endpoint.Targets{"1.2.3.4"},
+				},
+			},
+		},
 	} {
 		t.Run(ti.title, func(t *testing.T) {
 			ingresses := make([]*v1beta1.Ingress, 0)
@@ -1045,6 +1075,7 @@ func testIngressEndpoints(t *testing.T) {
 				ti.combineFQDNAndAnnotation,
 				ti.ignoreHostnameAnnotation,
 				ti.ignoreIngressTLSSpec,
+				ti.ingressClassNameFilter,
 			)
 			for _, ingress := range ingresses {
 				_, err := fakeClient.ExtensionsV1beta1().Ingresses(ingress.Namespace).Create(context.Background(), ingress, metav1.CreateOptions{})
@@ -1089,13 +1120,14 @@ func testIngressEndpoints(t *testing.T) {
 
 // ingress specific helper functions
 type fakeIngress struct {
-	dnsnames    []string
-	tlsdnsnames [][]string
-	ips         []string
-	hostnames   []string
-	namespace   string
-	name        string
-	annotations map[string]string
+	dnsnames         []string
+	tlsdnsnames      [][]string
+	ips              []string
+	hostnames        []string
+	namespace        string
+	name             string
+	annotations      map[string]string
+	ingressClassName string
 }
 
 func (ing fakeIngress) Ingress() *v1beta1.Ingress {
@@ -1106,7 +1138,8 @@ func (ing fakeIngress) Ingress() *v1beta1.Ingress {
 			Annotations: ing.annotations,
 		},
 		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{},
+			Rules:            []v1beta1.IngressRule{},
+			IngressClassName: &ing.ingressClassName,
 		},
 		Status: v1beta1.IngressStatus{
 			LoadBalancer: v1.LoadBalancerStatus{
