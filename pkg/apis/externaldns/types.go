@@ -52,6 +52,7 @@ type Config struct {
 	Namespace                         string
 	AnnotationFilter                  string
 	LabelFilter                       string
+	IngressClassNameFilter            []string
 	FQDNTemplate                      string
 	CombineFQDNAndAnnotation          bool
 	IgnoreHostnameAnnotation          bool
@@ -180,6 +181,7 @@ var defaultConfig = &Config{
 	Namespace:                   "",
 	AnnotationFilter:            "",
 	LabelFilter:                 "",
+	IngressClassNameFilter:      nil,
 	FQDNTemplate:                "",
 	CombineFQDNAndAnnotation:    false,
 	IgnoreHostnameAnnotation:    false,
@@ -352,6 +354,7 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("namespace", "Limit sources of endpoints to a specific namespace (default: all namespaces)").Default(defaultConfig.Namespace).StringVar(&cfg.Namespace)
 	app.Flag("annotation-filter", "Filter sources managed by external-dns via annotation using label selector semantics (default: all sources)").Default(defaultConfig.AnnotationFilter).StringVar(&cfg.AnnotationFilter)
 	app.Flag("label-filter", "Filter sources managed by external-dns via label selector when listing all resources; currently only supported by source CRD").Default(defaultConfig.LabelFilter).StringVar(&cfg.LabelFilter)
+	app.Flag("ingress-class-filter", "Filter ingresses to just these ingress class(es)").StringsVar(&cfg.IngressClassNameFilter)
 	app.Flag("fqdn-template", "A templated string that's used to generate DNS names from sources that don't define a hostname themselves, or to add a hostname suffix when paired with the fake source (optional). Accepts comma separated list for multiple global FQDN.").Default(defaultConfig.FQDNTemplate).StringVar(&cfg.FQDNTemplate)
 	app.Flag("combine-fqdn-annotation", "Combine FQDN template and Annotations instead of overwriting").BoolVar(&cfg.CombineFQDNAndAnnotation)
 	app.Flag("ignore-hostname-annotation", "Ignore hostname annotation when generating DNS names, valid only when using fqdn-template is set (optional, default: false)").BoolVar(&cfg.IgnoreHostnameAnnotation)
