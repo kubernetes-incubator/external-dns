@@ -343,52 +343,6 @@ func createMockInfobloxObject(name, recordType, value string) ibclient.IBObject 
 	return nil
 }
 
-func createMockInfobloxObject2(name, recordType, value string, value2 string) ibclient.IBObject {
-	ref := fmt.Sprintf("record:%s/%s:%s/default", strings.ToLower(recordType), base64.StdEncoding.EncodeToString([]byte(name)), name)
-	switch recordType {
-	case endpoint.RecordTypeA:
-		return ibclient.NewRecordA(
-			ibclient.RecordA{
-				Ref:      ref,
-				Name:     name,
-				Ipv4Addr: value,
-			},
-		)
-	case endpoint.RecordTypeCNAME:
-		return ibclient.NewRecordCNAME(
-			ibclient.RecordCNAME{
-				Ref:       ref,
-				Name:      name,
-				Canonical: value,
-			},
-		)
-	case endpoint.RecordTypeTXT:
-		return ibclient.NewRecordTXT(
-			ibclient.RecordTXT{
-				Ref:  ref,
-				Name: name,
-				Text: value,
-			},
-		)
-	case "HOST":
-		return ibclient.NewHostRecord(
-			ibclient.HostRecord{
-				Ref:  ref,
-				Name: name,
-				Ipv4Addrs: []ibclient.HostRecordIpv4Addr{
-					{
-						Ipv4Addr: value,
-					},
-					{
-						Ipv4Addr: value2,
-					},
-				},
-			},
-		)
-	}
-	return nil
-}
-
 func newInfobloxProvider(domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, dryRun bool, client ibclient.IBConnector) *InfobloxProvider {
 	return &InfobloxProvider{
 		client:       client,
