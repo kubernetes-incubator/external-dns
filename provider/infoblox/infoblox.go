@@ -197,6 +197,10 @@ func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 		var resH []ibclient.HostRecord
 		objH := ibclient.NewHostRecord(
 			ibclient.HostRecord{
+<<<<<<< HEAD
+=======
+				Name: p.recordsNameFilter,
+>>>>>>> Update provider/infoblox/infoblox.go
 				Zone: zone.Fqdn,
 				View: p.view,
 			},
