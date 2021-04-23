@@ -77,7 +77,7 @@ func (b byDNSName) Less(i, j int) bool {
 }
 
 // ExtendedRequestBuilder implements a HttpRequestBuilder which sets
-// additional query parameter on all get requests
+// additional query parameters on all get requests
 type ExtendedRequestBuilder struct {
 	fqdnRegEx  string
 	nameRegEx  string
