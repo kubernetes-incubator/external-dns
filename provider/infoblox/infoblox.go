@@ -231,6 +231,10 @@ func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 		var resT []ibclient.RecordTXT
 		objT := ibclient.NewRecordTXT(
 			ibclient.RecordTXT{
+<<<<<<< HEAD
+=======
+				Name: p.recordsNameFilter,
+>>>>>>> Update provider/infoblox/infoblox.go
 				Zone: zone.Fqdn,
 				View: p.view,
 			},
