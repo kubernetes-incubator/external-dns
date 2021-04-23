@@ -300,7 +300,7 @@ func createMockInfobloxZone(fqdn string) ibclient.ZoneAuth {
 	}
 }
 
-func createMockInfobloxObject(name, recordType, value string) ibclient.IBObject {
+func createMockInfobloxObject(name string, recordType string, values ...string) ibclient.IBObject {
 	ref := fmt.Sprintf("record:%s/%s:%s/default", strings.ToLower(recordType), base64.StdEncoding.EncodeToString([]byte(name)), name)
 	switch recordType {
 	case endpoint.RecordTypeA:
@@ -308,7 +308,7 @@ func createMockInfobloxObject(name, recordType, value string) ibclient.IBObject 
 			ibclient.RecordA{
 				Ref:      ref,
 				Name:     name,
-				Ipv4Addr: value,
+				Ipv4Addr: values[0],
 			},
 		)
 	case endpoint.RecordTypeCNAME:
@@ -316,7 +316,7 @@ func createMockInfobloxObject(name, recordType, value string) ibclient.IBObject 
 			ibclient.RecordCNAME{
 				Ref:       ref,
 				Name:      name,
-				Canonical: value,
+				Canonical: values[0],
 			},
 		)
 	case endpoint.RecordTypeTXT:
@@ -324,19 +324,22 @@ func createMockInfobloxObject(name, recordType, value string) ibclient.IBObject 
 			ibclient.RecordTXT{
 				Ref:  ref,
 				Name: name,
-				Text: value,
+				Text: values[0],
 			},
 		)
 	case "HOST":
+		var ipv4Addrs []ibclient.HostRecordIpv4Addr
+		for _, value := range values {
+			ipv4Addrs = append(ipv4Addrs, ibclient.HostRecordIpv4Addr{
+				Ipv4Addr: value,
+			})
+		}
+
 		return ibclient.NewHostRecord(
 			ibclient.HostRecord{
-				Ref:  ref,
-				Name: name,
-				Ipv4Addrs: []ibclient.HostRecordIpv4Addr{
-					{
-						Ipv4Addr: value,
-					},
-				},
+				Ref:       ref,
+				Name:      name,
+				Ipv4Addrs: ipv4Addrs,
 			},
 		)
 	}
@@ -366,7 +369,7 @@ func TestInfobloxRecords(t *testing.T) {
 			createMockInfobloxObject("whitespace.example.com", endpoint.RecordTypeA, "123.123.123.124"),
 			createMockInfobloxObject("whitespace.example.com", endpoint.RecordTypeTXT, "heritage=external-dns,external-dns/owner=white space"),
 			createMockInfobloxObject("hack.example.com", endpoint.RecordTypeCNAME, "cerberus.infoblox.com"),
-			createMockInfobloxObject2("multiple.example.com", "HOST", "123.123.123.121", "123.123.123.122"),
+			createMockInfobloxObject("multiple.example.com", "HOST", "123.123.123.121", "123.123.123.122"),
 			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeA, "123.123.123.123"),
 			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeA, "123.123.123.124"),
 			createMockInfobloxObject("multiple.example.com", endpoint.RecordTypeTXT, "heritage=external-dns,external-dns/owner=default"),
