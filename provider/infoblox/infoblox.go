@@ -176,7 +176,6 @@ func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 	for _, zone := range zones {
 		endpointsTypeA := make([]*endpoint.Endpoint, 0)
 		var resA []ibclient.RecordA
-
 		logrus.Debugf("fetch records from zone '%s'", zone.Fqdn)
 		objA := ibclient.NewRecordA(
 			ibclient.RecordA{
