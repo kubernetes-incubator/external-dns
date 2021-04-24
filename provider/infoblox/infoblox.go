@@ -168,7 +168,6 @@ func NewInfobloxProvider(infobloxConfig InfobloxConfig) (*InfobloxProvider, erro
 // Records gets the current records.
 func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint, err error) {
 	zones, err := p.zones()
-
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch zones: %s", err)
 	}
