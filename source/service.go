@@ -254,6 +254,8 @@ func (sc *serviceSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, e
 func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname string, ttl endpoint.TTL) []*endpoint.Endpoint {
 	var endpoints []*endpoint.Endpoint
 
+	access := getAccessFromAnnotations(svc.Annotations)
+
 	labelSelector, err := metav1.ParseToLabelSelector(labels.Set(svc.Spec.Selector).AsSelectorPreValidated().String())
 	if err != nil {
 		return nil
@@ -275,7 +277,7 @@ func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname stri
 		return endpoints
 	}
 
-	targetsByHeadlessDomain := make(map[string][]string)
+	targetsByHeadlessDomain := make(map[string]endpoint.Targets)
 	for _, subset := range endpointsObject.Subsets {
 		addresses := subset.Addresses
 		if svc.Spec.PublishNotReadyAddresses || sc.alwaysPublishNotReadyAddresses {
@@ -306,15 +308,25 @@ func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname stri
 			}
 
 			for _, headlessDomain := range headlessDomains {
-				var ep string
-				if sc.publishHostIP {
-					ep = pod.Status.HostIP
-					log.Debugf("Generating matching endpoint %s with HostIP %s", headlessDomain, ep)
-				} else {
-					ep = address.IP
-					log.Debugf("Generating matching endpoint %s with EndpointAddress IP %s", headlessDomain, ep)
+				targets := getTargetsFromTargetAnnotation(pod.Annotations)
+				if len(targets) == 0 {
+					if access == "public" {
+						node, _ := sc.nodeInformer.Lister().Get(pod.Spec.NodeName)
+						for _, address := range node.Status.Addresses {
+							if address.Type == v1.NodeExternalIP {
+								targets = endpoint.Targets{address.Address}
+								log.Debugf("Generating matching endpoint %s with NodeExternalIP %s", headlessDomain, address.Address)
+							}
+						}
+					} else if sc.publishHostIP {
+						targets = endpoint.Targets{pod.Status.HostIP}
+						log.Debugf("Generating matching endpoint %s with HostIP %s", headlessDomain, pod.Status.HostIP)
+					} else {
+						targets = endpoint.Targets{address.IP}
+						log.Debugf("Generating matching endpoint %s with EndpointAddress IP %s", headlessDomain, address.IP)
+					}
 				}
-				targetsByHeadlessDomain[headlessDomain] = append(targetsByHeadlessDomain[headlessDomain], ep)
+				targetsByHeadlessDomain[headlessDomain] = append(targetsByHeadlessDomain[headlessDomain], targets...)
 			}
 		}
 	}
