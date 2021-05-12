@@ -19,6 +19,7 @@ package infoblox
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -31,6 +32,10 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 	"sigs.k8s.io/external-dns/provider"
+)
+
+const (
+	infobloxRecordTTL = 300
 )
 
 // InfobloxConfig clarifies the method signature
@@ -46,6 +51,7 @@ type InfobloxConfig struct {
 	DryRun       bool
 	View         string
 	MaxResults   int
+	CreatePTR    bool
 }
 
 // InfobloxProvider implements the DNS provider for Infoblox.
@@ -56,6 +62,7 @@ type InfobloxProvider struct {
 	zoneIDFilter provider.ZoneIDFilter
 	view         string
 	dryRun       bool
+	createPTR    bool
 }
 
 type infobloxRecordSet struct {
@@ -132,6 +139,7 @@ func NewInfobloxProvider(infobloxConfig InfobloxConfig) (*InfobloxProvider, erro
 		zoneIDFilter: infobloxConfig.ZoneIDFilter,
 		dryRun:       infobloxConfig.DryRun,
 		view:         infobloxConfig.View,
+		createPTR:    infobloxConfig.CreatePTR,
 	}
 
 	return provider, nil
@@ -209,6 +217,23 @@ func (p *InfobloxProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 		}
 		for _, res := range resC {
 			endpoints = append(endpoints, endpoint.NewEndpoint(res.Name, endpoint.RecordTypeCNAME, res.Canonical))
+		}
+
+		if p.createPTR {
+			var resP []ibclient.RecordPTR
+			objP := ibclient.NewRecordPTR(
+				ibclient.RecordPTR{
+					Zone: zone.Fqdn,
+					View: p.view,
+				},
+			)
+			err = p.client.GetObject(objP, "", &resP)
+			if err != nil {
+				return nil, fmt.Errorf("could not fetch PTR records from zone '%s': %s", zone.Fqdn, err)
+			}
+			for _, res := range resP {
+				endpoints = append(endpoints, endpoint.NewEndpoint(res.PtrdName, endpoint.RecordTypePTR, res.Ipv4Addr))
+			}
 		}
 
 		var resT []ibclient.RecordTXT
@@ -290,6 +315,17 @@ func (p *InfobloxProvider) mapChanges(zones []ibclient.ZoneAuth, changes *plan.C
 		}
 		// Ensure the record type is suitable
 		changeMap[zone.Fqdn] = append(changeMap[zone.Fqdn], change)
+
+		if p.createPTR && change.RecordType == endpoint.RecordTypeA {
+			reverseZone := p.findReverseZone(zones, change.Targets[0])
+			if reverseZone == nil {
+				logrus.Debugf("Ignoring changes to '%s' because a suitable Infoblox DNS zone was not found.", change.Targets[0])
+				return
+			}
+			changecopy := *change
+			changecopy.RecordType = endpoint.RecordTypePTR
+			changeMap[reverseZone.Fqdn] = append(changeMap[reverseZone.Fqdn], &changecopy)
+		}
 	}
 
 	for _, change := range changes.Delete {
@@ -327,7 +363,34 @@ func (p *InfobloxProvider) findZone(zones []ibclient.ZoneAuth, name string) *ibc
 	return result
 }
 
+func (p *InfobloxProvider) findReverseZone(zones []ibclient.ZoneAuth, name string) *ibclient.ZoneAuth {
+	ip := net.ParseIP(name)
+	networks := map[int]*ibclient.ZoneAuth{}
+	maxMask := 0
+
+	for _, zone := range zones {
+		_, net, err := net.ParseCIDR(zone.Fqdn)
+		if err != nil {
+			logrus.WithError(err).Debugf("fqdn %s is no cidr", zone.Fqdn)
+		} else {
+			if net.Contains(ip) {
+				_, mask := net.Mask.Size()
+				networks[mask] = &zone
+				if mask > maxMask {
+					maxMask = mask
+				}
+			}
+		}
+	}
+	return networks[maxMask]
+}
+
 func (p *InfobloxProvider) recordSet(ep *endpoint.Endpoint, getObject bool, targetIndex int) (recordSet infobloxRecordSet, err error) {
+	var ttl uint = infobloxRecordTTL
+	if ep.RecordTTL.IsConfigured() {
+		ttl = uint(ep.RecordTTL)
+	}
+
 	switch ep.RecordType {
 	case endpoint.RecordTypeA:
 		var res []ibclient.RecordA
@@ -344,6 +407,27 @@ func (p *InfobloxProvider) recordSet(ep *endpoint.Endpoint, getObject bool, targ
 				return
 			}
 		}
+		obj.Ttl = ttl
+		recordSet = infobloxRecordSet{
+			obj: obj,
+			res: &res,
+		}
+	case endpoint.RecordTypePTR:
+		var res []ibclient.RecordPTR
+		obj := ibclient.NewRecordPTR(
+			ibclient.RecordPTR{
+				PtrdName: ep.DNSName,
+				Ipv4Addr: ep.Targets[0],
+				View:     p.view,
+			},
+		)
+		if getObject {
+			err = p.client.GetObject(obj, "", &res)
+			if err != nil {
+				return
+			}
+		}
+		obj.Ttl = ttl
 		recordSet = infobloxRecordSet{
 			obj: obj,
 			res: &res,
@@ -387,6 +471,7 @@ func (p *InfobloxProvider) recordSet(ep *endpoint.Endpoint, getObject bool, targ
 				return
 			}
 		}
+		obj.TTL = int(ttl)
 		recordSet = infobloxRecordSet{
 			obj: obj,
 			res: &res,
@@ -470,6 +555,10 @@ func (p *InfobloxProvider) deleteRecords(deleted infobloxChangeMap) {
 					switch ep.RecordType {
 					case endpoint.RecordTypeA:
 						for _, record := range *recordSet.res.(*[]ibclient.RecordA) {
+							_, err = p.client.DeleteObject(record.Ref)
+						}
+					case endpoint.RecordTypePTR:
+						for _, record := range *recordSet.res.(*[]ibclient.RecordPTR) {
 							_, err = p.client.DeleteObject(record.Ref)
 						}
 					case endpoint.RecordTypeCNAME:

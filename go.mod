@@ -30,8 +30,7 @@ require (
 	github.com/google/go-cmp v0.4.1
 	github.com/gophercloud/gophercloud v0.1.0
 	github.com/gorilla/mux v1.7.4 // indirect
-	github.com/hooklift/gowsdl v0.4.0
-	github.com/infobloxopen/infoblox-go-client v0.0.0-20180606155407-61dc5f9b0a65
+	github.com/infobloxopen/infoblox-go-client v1.1.1-0.20201016074357-b18fb3795294
 	github.com/linki/instrumented_http v0.2.0
 	github.com/linode/linodego v0.19.0
 	github.com/maxatome/go-testdeep v1.4.0

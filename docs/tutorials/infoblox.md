@@ -78,6 +78,7 @@ spec:
         - --infoblox-wapi-port=443          # (optional) Infoblox WAPI port. The default is "443".
         - --infoblox-wapi-version=2.3.1     # (optional) Infoblox WAPI version. The default is "2.3.1"
         - --infoblox-ssl-verify             # (optional) Use --no-infoblox-ssl-verify to skip server certificate verification.
+        - --infoblox-create-ptr             # (optional) Use --infoblox-create-ptr to create a ptr entry in addition to an entry.
         env:
         - name: EXTERNAL_DNS_INFOBLOX_HTTP_POOL_CONNECTIONS
           value: "10" # (optional) Infoblox WAPI request connection pool size. The default is "10".

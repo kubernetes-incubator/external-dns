@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client"
+	"github.com/miekg/dns"
 	"github.com/stretchr/testify/assert"
 
 	"sigs.k8s.io/external-dns/endpoint"
@@ -89,6 +90,22 @@ func (client *mockIBConnector) CreateObject(obj ibclient.IBObject) (ref string, 
 		)
 		obj.(*ibclient.RecordTXT).Ref = ref
 		ref = fmt.Sprintf("%s/%s:%s/default", obj.ObjectType(), base64.StdEncoding.EncodeToString([]byte(obj.(*ibclient.RecordTXT).Name)), obj.(*ibclient.RecordTXT).Name)
+	case "record:ptr":
+		fmt.Printf("create ptr record\n")
+		client.createdEndpoints = append(
+			client.createdEndpoints,
+			endpoint.NewEndpoint(
+				obj.(*ibclient.RecordPTR).PtrdName,
+				endpoint.RecordTypePTR,
+				obj.(*ibclient.RecordPTR).Ipv4Addr,
+			),
+		)
+		obj.(*ibclient.RecordPTR).Ref = ref
+		reverseAddr, err := dns.ReverseAddr(obj.(*ibclient.RecordPTR).Ipv4Addr)
+		if err != nil {
+			return ref, fmt.Errorf("unable to create reverse addr from %s", obj.(*ibclient.RecordPTR).Ipv4Addr)
+		}
+		ref = fmt.Sprintf("%s/%s:%s/default", obj.ObjectType(), base64.StdEncoding.EncodeToString([]byte(obj.(*ibclient.RecordPTR).PtrdName)), reverseAddr)
 	}
 	*client.mockInfobloxObjects = append(
 		*client.mockInfobloxObjects,
@@ -163,6 +180,22 @@ func (client *mockIBConnector) GetObject(obj ibclient.IBObject, ref string, res 
 			}
 		}
 		*res.(*[]ibclient.RecordTXT) = result
+	case "record:ptr":
+		var result []ibclient.RecordPTR
+		for _, object := range *client.mockInfobloxObjects {
+			if object.ObjectType() == "record:ptr" {
+				if ref != "" &&
+					ref != object.(*ibclient.RecordPTR).Ref {
+					continue
+				}
+				if obj.(*ibclient.RecordPTR).PtrdName != "" &&
+					obj.(*ibclient.RecordPTR).PtrdName != object.(*ibclient.RecordPTR).PtrdName {
+					continue
+				}
+				result = append(result, *object.(*ibclient.RecordPTR))
+			}
+		}
+		*res.(*[]ibclient.RecordPTR) = result
 	case "zone_auth":
 		*res.(*[]ibclient.ZoneAuth) = *client.mockInfobloxZones
 	}
@@ -242,6 +275,24 @@ func (client *mockIBConnector) DeleteObject(ref string) (refRes string, err erro
 				endpoint.NewEndpoint(
 					record.Name,
 					endpoint.RecordTypeTXT,
+					"",
+				),
+			)
+		}
+	case "record:ptr":
+		var records []ibclient.RecordPTR
+		obj := ibclient.NewRecordPTR(
+			ibclient.RecordPTR{
+				Name: result[2],
+			},
+		)
+		client.GetObject(obj, ref, &records)
+		for _, record := range records {
+			client.deletedEndpoints = append(
+				client.deletedEndpoints,
+				endpoint.NewEndpoint(
+					record.PtrdName,
+					endpoint.RecordTypePTR,
 					"",
 				),
 			)
@@ -339,16 +390,25 @@ func createMockInfobloxObject(name, recordType, value string) ibclient.IBObject 
 				},
 			},
 		)
+	case endpoint.RecordTypePTR:
+		return ibclient.NewRecordPTR(
+			ibclient.RecordPTR{
+				Ref:      ref,
+				PtrdName: name,
+				Ipv4Addr: value,
+			},
+		)
 	}
 	return nil
 }
 
-func newInfobloxProvider(domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, dryRun bool, client ibclient.IBConnector) *InfobloxProvider {
+func newInfobloxProvider(domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, dryRun bool, createPTR bool, client ibclient.IBConnector) *InfobloxProvider {
 	return &InfobloxProvider{
 		client:       client,
 		domainFilter: domainFilter,
 		zoneIDFilter: zoneIDFilter,
 		dryRun:       dryRun,
+		createPTR:    createPTR,
 	}
 }
 
@@ -376,7 +436,7 @@ func TestInfobloxRecords(t *testing.T) {
 		},
 	}
 
-	provider := newInfobloxProvider(endpoint.NewDomainFilter([]string{"example.com"}), provider.NewZoneIDFilter([]string{""}), true, &client)
+	provider := newInfobloxProvider(endpoint.NewDomainFilter([]string{"example.com"}), provider.NewZoneIDFilter([]string{""}), true, false, &client)
 	actual, err := provider.Records(context.Background())
 
 	if err != nil {
@@ -399,10 +459,35 @@ func TestInfobloxRecords(t *testing.T) {
 	validateEndpoints(t, actual, expected)
 }
 
+func TestInfobloxRecordsReverse(t *testing.T) {
+	client := mockIBConnector{
+		mockInfobloxZones: &[]ibclient.ZoneAuth{
+			createMockInfobloxZone("10.0.0.0/24"),
+			createMockInfobloxZone("10.0.1.0/24"),
+		},
+		mockInfobloxObjects: &[]ibclient.IBObject{
+			createMockInfobloxObject("example.com", endpoint.RecordTypePTR, "10.0.0.1"),
+			createMockInfobloxObject("example2.com", endpoint.RecordTypePTR, "10.0.0.2"),
+		},
+	}
+
+	provider := newInfobloxProvider(endpoint.NewDomainFilter([]string{"10.0.0.0/24"}), provider.NewZoneIDFilter([]string{""}), true, true, &client)
+	actual, err := provider.Records(context.Background())
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := []*endpoint.Endpoint{
+		endpoint.NewEndpoint("example.com", endpoint.RecordTypePTR, "10.0.0.1"),
+		endpoint.NewEndpoint("example2.com", endpoint.RecordTypePTR, "10.0.0.2"),
+	}
+	validateEndpoints(t, actual, expected)
+}
+
 func TestInfobloxApplyChanges(t *testing.T) {
 	client := mockIBConnector{}
 
-	testInfobloxApplyChangesInternal(t, false, &client)
+	testInfobloxApplyChangesInternal(t, false, false, &client)
 
 	validateEndpoints(t, client.createdEndpoints, []*endpoint.Endpoint{
 		endpoint.NewEndpoint("example.com", endpoint.RecordTypeA, "1.2.3.4"),
@@ -423,7 +508,39 @@ func TestInfobloxApplyChanges(t *testing.T) {
 		endpoint.NewEndpoint("old.example.com", endpoint.RecordTypeA, ""),
 		endpoint.NewEndpoint("oldcname.example.com", endpoint.RecordTypeCNAME, ""),
 		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypeA, ""),
-		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypeTXT, ""),
+		endpoint.NewEndpoint("deletedcname.example.com", endpoint.RecordTypeCNAME, ""),
+	})
+
+	validateEndpoints(t, client.updatedEndpoints, []*endpoint.Endpoint{})
+}
+
+func TestInfobloxApplyChangesReverse(t *testing.T) {
+	client := mockIBConnector{}
+
+	testInfobloxApplyChangesInternal(t, false, true, &client)
+
+	validateEndpoints(t, client.createdEndpoints, []*endpoint.Endpoint{
+		endpoint.NewEndpoint("example.com", endpoint.RecordTypeA, "1.2.3.4"),
+		endpoint.NewEndpoint("example.com", endpoint.RecordTypePTR, "1.2.3.4"),
+		endpoint.NewEndpoint("example.com", endpoint.RecordTypeTXT, "tag"),
+		endpoint.NewEndpoint("foo.example.com", endpoint.RecordTypeA, "1.2.3.4"),
+		endpoint.NewEndpoint("foo.example.com", endpoint.RecordTypePTR, "1.2.3.4"),
+		endpoint.NewEndpoint("foo.example.com", endpoint.RecordTypeTXT, "tag"),
+		endpoint.NewEndpoint("bar.example.com", endpoint.RecordTypeCNAME, "other.com"),
+		endpoint.NewEndpoint("bar.example.com", endpoint.RecordTypeTXT, "tag"),
+		endpoint.NewEndpoint("other.com", endpoint.RecordTypeA, "5.6.7.8"),
+		endpoint.NewEndpoint("other.com", endpoint.RecordTypeTXT, "tag"),
+		endpoint.NewEndpoint("new.example.com", endpoint.RecordTypeA, "111.222.111.222"),
+		endpoint.NewEndpoint("newcname.example.com", endpoint.RecordTypeCNAME, "other.com"),
+		endpoint.NewEndpoint("multiple.example.com", endpoint.RecordTypeA, "1.2.3.4,3.4.5.6,8.9.10.11"),
+		endpoint.NewEndpoint("multiple.example.com", endpoint.RecordTypeTXT, "tag-multiple-A-records"),
+	})
+
+	validateEndpoints(t, client.deletedEndpoints, []*endpoint.Endpoint{
+		endpoint.NewEndpoint("old.example.com", endpoint.RecordTypeA, ""),
+		endpoint.NewEndpoint("oldcname.example.com", endpoint.RecordTypeCNAME, ""),
+		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypeA, ""),
+		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypePTR, ""),
 		endpoint.NewEndpoint("deletedcname.example.com", endpoint.RecordTypeCNAME, ""),
 	})
 
@@ -435,7 +552,7 @@ func TestInfobloxApplyChangesDryRun(t *testing.T) {
 		mockInfobloxObjects: &[]ibclient.IBObject{},
 	}
 
-	testInfobloxApplyChangesInternal(t, true, &client)
+	testInfobloxApplyChangesInternal(t, true, false, &client)
 
 	validateEndpoints(t, client.createdEndpoints, []*endpoint.Endpoint{})
 
@@ -444,14 +561,16 @@ func TestInfobloxApplyChangesDryRun(t *testing.T) {
 	validateEndpoints(t, client.updatedEndpoints, []*endpoint.Endpoint{})
 }
 
-func testInfobloxApplyChangesInternal(t *testing.T, dryRun bool, client ibclient.IBConnector) {
+func testInfobloxApplyChangesInternal(t *testing.T, dryRun, createPTR bool, client ibclient.IBConnector) {
 	client.(*mockIBConnector).mockInfobloxZones = &[]ibclient.ZoneAuth{
 		createMockInfobloxZone("example.com"),
 		createMockInfobloxZone("other.com"),
+		createMockInfobloxZone("1.2.3.0/24"),
 	}
 	client.(*mockIBConnector).mockInfobloxObjects = &[]ibclient.IBObject{
 		createMockInfobloxObject("deleted.example.com", endpoint.RecordTypeA, "121.212.121.212"),
 		createMockInfobloxObject("deleted.example.com", endpoint.RecordTypeTXT, "test-deleting-txt"),
+		createMockInfobloxObject("deleted.example.com", endpoint.RecordTypePTR, "121.212.121.212"),
 		createMockInfobloxObject("deletedcname.example.com", endpoint.RecordTypeCNAME, "other.com"),
 		createMockInfobloxObject("old.example.com", endpoint.RecordTypeA, "121.212.121.212"),
 		createMockInfobloxObject("oldcname.example.com", endpoint.RecordTypeCNAME, "other.com"),
@@ -461,6 +580,7 @@ func testInfobloxApplyChangesInternal(t *testing.T, dryRun bool, client ibclient
 		endpoint.NewDomainFilter([]string{""}),
 		provider.NewZoneIDFilter([]string{""}),
 		dryRun,
+		createPTR,
 		client,
 	)
 
@@ -493,9 +613,12 @@ func testInfobloxApplyChangesInternal(t *testing.T, dryRun bool, client ibclient
 
 	deleteRecords := []*endpoint.Endpoint{
 		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypeA, "121.212.121.212"),
-		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypeTXT, "test-deleting-txt"),
 		endpoint.NewEndpoint("deletedcname.example.com", endpoint.RecordTypeCNAME, "other.com"),
 		endpoint.NewEndpoint("deleted.nope.com", endpoint.RecordTypeA, "222.111.222.111"),
+	}
+
+	if createPTR {
+		deleteRecords = append(deleteRecords, endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypePTR, "121.212.121.212"))
 	}
 
 	changes := &plan.Changes{
@@ -516,11 +639,12 @@ func TestInfobloxZones(t *testing.T) {
 			createMockInfobloxZone("example.com"),
 			createMockInfobloxZone("lvl1-1.example.com"),
 			createMockInfobloxZone("lvl2-1.lvl1-1.example.com"),
+			createMockInfobloxZone("1.2.3.0/24"),
 		},
 		mockInfobloxObjects: &[]ibclient.IBObject{},
 	}
 
-	provider := newInfobloxProvider(endpoint.NewDomainFilter([]string{"example.com"}), provider.NewZoneIDFilter([]string{""}), true, &client)
+	provider := newInfobloxProvider(endpoint.NewDomainFilter([]string{"example.com", "1.2.3.0/24"}), provider.NewZoneIDFilter([]string{""}), true, false, &client)
 	zones, _ := provider.zones()
 	var emptyZoneAuth *ibclient.ZoneAuth
 	assert.Equal(t, provider.findZone(zones, "example.com").Fqdn, "example.com")
@@ -531,6 +655,7 @@ func TestInfobloxZones(t *testing.T) {
 	assert.Equal(t, provider.findZone(zones, "lvl2-1.lvl1-1.example.com").Fqdn, "lvl2-1.lvl1-1.example.com")
 	assert.Equal(t, provider.findZone(zones, "lvl2-2.lvl1-1.example.com").Fqdn, "lvl1-1.example.com")
 	assert.Equal(t, provider.findZone(zones, "lvl2-2.lvl1-2.example.com").Fqdn, "example.com")
+	assert.Equal(t, provider.findZone(zones, "1.2.3.0/24").Fqdn, "1.2.3.0/24")
 }
 
 func TestMaxResultsRequestBuilder(t *testing.T) {
