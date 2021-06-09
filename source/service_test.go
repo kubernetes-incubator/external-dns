@@ -2753,6 +2753,177 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 	}
 }
 
+// TestHeadlessServices tests that headless services generate the correct endpoints.
+func TestHeadlessServicesExternalHostIP(t *testing.T) {
+	for _, tc := range []struct {
+		title                    string
+		targetNamespace          string
+		svcNamespace             string
+		svcName                  string
+		svcType                  v1.ServiceType
+		compatibility            string
+		fqdnTemplate             string
+		ignoreHostnameAnnotation bool
+		labels                   map[string]string
+		annotations              map[string]string
+		clusterIP                string
+		hostIPs                  []string
+		selector                 map[string]string
+		lbs                      []string
+		podnames                 []string
+		hostnames                []string
+		podsReady                []bool
+		publishNotReadyAddresses bool
+		expected                 []*endpoint.Endpoint
+		expectError              bool
+	}{
+		{
+			"annotated Headless services return endpoints for each selected Pod",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey:   "service.example.org",
+				externalIPAnnotationKey: "true",
+			},
+			v1.ClusterIPNone,
+			[]string{"4.3.2.1", "5.4.3.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true, true},
+			false,
+			[]*endpoint.Endpoint{
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"4.3.2.1"}},
+				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"5.4.3.2"}},
+				{DNSName: "service.example.org", Targets: endpoint.Targets{"4.3.2.1", "5.4.3.2"}},
+			},
+			false,
+		},
+	} {
+		t.Run(tc.title, func(t *testing.T) {
+			// Create a Kubernetes testing client
+			kubernetes := fake.NewSimpleClientset()
+
+			service := &v1.Service{
+				Spec: v1.ServiceSpec{
+					Type:                     tc.svcType,
+					ClusterIP:                tc.clusterIP,
+					Selector:                 tc.selector,
+					PublishNotReadyAddresses: tc.publishNotReadyAddresses,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   tc.svcNamespace,
+					Name:        tc.svcName,
+					Labels:      tc.labels,
+					Annotations: tc.annotations,
+				},
+				Status: v1.ServiceStatus{},
+			}
+			_, err := kubernetes.CoreV1().Services(service.Namespace).Create(context.Background(), service, metav1.CreateOptions{})
+			require.NoError(t, err)
+
+			var addresses, notReadyAddresses []v1.EndpointAddress
+			for i, podname := range tc.podnames {
+				node := &v1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-" + podname,
+					},
+					Spec: v1.NodeSpec{},
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{{Type: v1.NodeExternalIP, Address: tc.hostIPs[i]}},
+					},
+				}
+				_, err = kubernetes.CoreV1().Nodes().Create(context.TODO(), node, metav1.CreateOptions{})
+				require.NoError(t, err)
+
+				pod := &v1.Pod{
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{},
+						Hostname:   tc.hostnames[i],
+						NodeName:   node.Name,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:   tc.svcNamespace,
+						Name:        podname,
+						Labels:      tc.labels,
+						Annotations: tc.annotations,
+					},
+					Status: v1.PodStatus{
+						HostIP: tc.hostIPs[i],
+					},
+				}
+
+				_, err = kubernetes.CoreV1().Pods(tc.svcNamespace).Create(context.Background(), pod, metav1.CreateOptions{})
+				require.NoError(t, err)
+
+				address := v1.EndpointAddress{
+					IP: tc.hostIPs[i],
+					TargetRef: &v1.ObjectReference{
+						APIVersion: "",
+						Kind:       "Pod",
+						Name:       podname,
+					},
+				}
+				if tc.podsReady[i] {
+					addresses = append(addresses, address)
+				} else {
+					notReadyAddresses = append(notReadyAddresses, address)
+				}
+			}
+			endpointsObject := &v1.Endpoints{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: tc.svcNamespace,
+					Name:      tc.svcName,
+					Labels:    tc.labels,
+				},
+				Subsets: []v1.EndpointSubset{
+					{
+						Addresses:         addresses,
+						NotReadyAddresses: notReadyAddresses,
+					},
+				},
+			}
+			_, err = kubernetes.CoreV1().Endpoints(tc.svcNamespace).Create(context.Background(), endpointsObject, metav1.CreateOptions{})
+			require.NoError(t, err)
+
+			// Create our object under test and get the endpoints.
+			client, _ := NewServiceSource(
+				kubernetes,
+				tc.targetNamespace,
+				"",
+				tc.fqdnTemplate,
+				false,
+				tc.compatibility,
+				true,
+				false,
+				false,
+				[]string{},
+				tc.ignoreHostnameAnnotation,
+			)
+			require.NoError(t, err)
+
+			endpoints, err := client.Endpoints(context.Background())
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			// Validate returned endpoints against desired endpoints.
+			validateEndpoints(t, endpoints, tc.expected)
+		})
+	}
+}
+
 // TestExternalServices tests that external services generate the correct endpoints.
 func TestExternalServices(t *testing.T) {
 	for _, tc := range []struct {
