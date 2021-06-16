@@ -197,6 +197,7 @@ func (sc *ingressRouteSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoi
 
 		log.Debugf("Endpoints generated from ingressroute: %s/%s: %v", ir.Namespace, ir.Name, irEndpoints)
 		sc.setResourceLabel(ir, irEndpoints)
+		addClaimLabels(ir.Annotations, irEndpoints)
 		endpoints = append(endpoints, irEndpoints...)
 	}
 

@@ -161,6 +161,7 @@ The following tutorials are provided:
 * [Vultr](docs/tutorials/vultr.md)
 * [UltraDNS](docs/tutorials/ultradns.md)
 * [GoDaddy](docs/tutorials/godaddy.md)
+* [Ownership Transfer](docs/tutorials/ownership-transfer.md)
 
 ### Running Locally
 

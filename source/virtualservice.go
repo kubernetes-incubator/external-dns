@@ -191,6 +191,7 @@ func (sc *virtualServiceSource) Endpoints(ctx context.Context) ([]*endpoint.Endp
 
 		log.Debugf("Endpoints generated from VirtualService: %s/%s: %v", virtualService.Namespace, virtualService.Name, gwEndpoints)
 		sc.setResourceLabel(virtualService, gwEndpoints)
+		addClaimLabels(virtualService.Annotations, gwEndpoints)
 		endpoints = append(endpoints, gwEndpoints...)
 	}
 

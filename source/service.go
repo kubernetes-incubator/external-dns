@@ -211,6 +211,7 @@ func (sc *serviceSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, e
 
 		log.Debugf("Endpoints generated from service: %s/%s: %v", svc.Namespace, svc.Name, svcEndpoints)
 		sc.setResourceLabel(svc, svcEndpoints)
+		addClaimLabels(svc.Annotations, svcEndpoints)
 		endpoints = append(endpoints, svcEndpoints...)
 	}
 

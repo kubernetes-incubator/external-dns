@@ -160,6 +160,7 @@ func (ors *ocpRouteSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint,
 
 		log.Debugf("Endpoints generated from OpenShift Route: %s/%s: %v", ocpRoute.Namespace, ocpRoute.Name, orEndpoints)
 		ors.setResourceLabel(ocpRoute, orEndpoints)
+		addClaimLabels(ocpRoute.Annotations, orEndpoints)
 		endpoints = append(endpoints, orEndpoints...)
 	}
 

@@ -120,6 +120,9 @@ func (im *TXTRegistry) Records(ctx context.Context) ([]*endpoint.Endpoint, error
 		}
 		dnsName := strings.Join(dnsNameSplit, ".")
 		key := fmt.Sprintf("%s::%s", dnsName, ep.SetIdentifier)
+		// remove certain labels inherited directly from the record so only the corresponding
+		// labels retrieved from the TXT record are used
+		filterLabels(ep)
 		if labels, ok := labelMap[key]; ok {
 			for k, v := range labels {
 				ep.Labels[k] = v
@@ -150,6 +153,7 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 			r.Labels = make(map[string]string)
 		}
 		r.Labels[endpoint.OwnerLabelKey] = im.ownerID
+		r.EnsureOwnerClaimPermission(im.ownerID)
 		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
 		filteredChanges.Create = append(filteredChanges.Create, txt)
@@ -187,6 +191,10 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 
 	// make sure TXT records are consistently updated as well
 	for _, r := range filteredChanges.UpdateNew {
+		r.EnsureOwnerClaimPermission(im.ownerID)
+		if r.OwnerClaimPermitted(im.ownerID) {
+			r.Labels[endpoint.OwnerLabelKey] = im.ownerID
+		}
 		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
 		filteredChanges.UpdateNew = append(filteredChanges.UpdateNew, txt)

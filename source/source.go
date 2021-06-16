@@ -53,6 +53,12 @@ const (
 	controllerAnnotationValue = "dns-controller"
 	// The annotation used for defining the desired hostname
 	internalHostnameAnnotationKey = "external-dns.alpha.kubernetes.io/internal-hostname"
+	// The annotation used for permitting an owner to claim ownership of an Endpoint
+	permitClaimByOwnerAnnotationKey = "external-dns.alpha.kubernetes.io/permit-claim-by-owner"
+	// The annotation used for permitting a resource to claim ownership of an Endpoint
+	permitClaimByResourceAnnotationKey = "external-dns.alpha.kubernetes.io/permit-claim-by-resource"
+	// The annotation used signal that we want to claim a dns record managed by a different owner
+	claimAnnotationKey = "external-dns.alpha.kubernetes.io/claim"
 )
 
 // Provider-specific annotations
@@ -129,6 +135,22 @@ func getInternalHostnamesFromAnnotations(annotations map[string]string) []string
 func getAliasFromAnnotations(annotations map[string]string) bool {
 	aliasAnnotation, exists := annotations[aliasAnnotationKey]
 	return exists && aliasAnnotation == "true"
+}
+
+func getPermitClaimByOwnerFromAnnotations(annotations map[string]string) string {
+	return annotations[permitClaimByOwnerAnnotationKey]
+}
+
+func getPermitClaimByResourceFromAnnotations(annotations map[string]string) string {
+	return annotations[permitClaimByResourceAnnotationKey]
+}
+
+func getClaimFromAnnotations(annotations map[string]string) string {
+	claimAnnotation, exists := annotations[claimAnnotationKey]
+	if exists && claimAnnotation == "true" {
+		return "true"
+	}
+	return "false"
 }
 
 func getProviderSpecificAnnotations(annotations map[string]string) (endpoint.ProviderSpecific, string) {
@@ -272,4 +294,18 @@ func poll(interval time.Duration, timeout time.Duration, condition wait.Conditio
 	}
 
 	return wait.Poll(interval, timeout, condition)
+}
+
+func addClaimLabels(annotations map[string]string, endpoints []*endpoint.Endpoint) {
+	for _, ep := range endpoints {
+		if claimPermittedOwner := getPermitClaimByOwnerFromAnnotations(annotations); claimPermittedOwner != "" {
+			ep.Labels[endpoint.PermitClaimByOwnerLabelKey] = claimPermittedOwner
+		}
+		if claimPermittedResource := getPermitClaimByResourceFromAnnotations(annotations); claimPermittedResource != "" {
+			ep.Labels[endpoint.PermitClaimByResourceLabelKey] = claimPermittedResource
+		}
+		if getClaimFromAnnotations(annotations) == "true" {
+			ep.Labels[endpoint.ClaimLabelKey] = "true"
+		}
+	}
 }

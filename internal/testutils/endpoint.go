@@ -55,6 +55,8 @@ func SameEndpoint(a, b *endpoint.Endpoint) bool {
 	return a.DNSName == b.DNSName && a.Targets.Same(b.Targets) && a.RecordType == b.RecordType && a.SetIdentifier == b.SetIdentifier &&
 		a.Labels[endpoint.OwnerLabelKey] == b.Labels[endpoint.OwnerLabelKey] && a.RecordTTL == b.RecordTTL &&
 		a.Labels[endpoint.ResourceLabelKey] == b.Labels[endpoint.ResourceLabelKey] &&
+		a.Labels[endpoint.PermitClaimByOwnerLabelKey] == b.Labels[endpoint.PermitClaimByOwnerLabelKey] &&
+		a.Labels[endpoint.PermitClaimByResourceLabelKey] == b.Labels[endpoint.PermitClaimByResourceLabelKey] &&
 		SameProviderSpecific(a.ProviderSpecific, b.ProviderSpecific)
 }
 

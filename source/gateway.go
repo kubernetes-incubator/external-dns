@@ -193,6 +193,7 @@ func (sc *gatewaySource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, e
 
 		log.Debugf("Endpoints generated from gateway: %s/%s: %v", gateway.Namespace, gateway.Name, gwEndpoints)
 		sc.setResourceLabel(gateway, gwEndpoints)
+		addClaimLabels(gateway.Annotations, gwEndpoints)
 		endpoints = append(endpoints, gwEndpoints...)
 	}
 

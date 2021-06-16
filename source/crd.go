@@ -170,6 +170,7 @@ func (cs *crdSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, error
 		}
 
 		cs.setResourceLabel(&dnsEndpoint, crdEndpoints)
+		addClaimLabels(dnsEndpoint.Annotations, crdEndpoints)
 		endpoints = append(endpoints, crdEndpoints...)
 
 		if dnsEndpoint.Status.ObservedGeneration == dnsEndpoint.Generation {

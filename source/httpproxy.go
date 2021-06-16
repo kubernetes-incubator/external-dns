@@ -186,6 +186,7 @@ func (sc *httpProxySource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint,
 
 		log.Debugf("Endpoints generated from HTTPProxy: %s/%s: %v", hp.Namespace, hp.Name, hpEndpoints)
 		sc.setResourceLabel(hp, hpEndpoints)
+		addClaimLabels(hp.Annotations, hpEndpoints)
 		endpoints = append(endpoints, hpEndpoints...)
 	}
 

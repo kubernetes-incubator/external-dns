@@ -35,6 +35,15 @@ const (
 	// ResourceLabelKey is the name of the label that identifies k8s resource which wants to acquire the DNS name
 	ResourceLabelKey = "resource"
 
+	// PermitClaimByOwnerLabelKey is the name of the label that defines which owner is permitted to claim ownership of an Endpoint.
+	PermitClaimByOwnerLabelKey = "permit-claim-by-owner"
+
+	// PermitClaimByResourceLabelKey is the name of the label that identifies which resource is permitted to claim ownership of an Endpoint.
+	PermitClaimByResourceLabelKey = "permit-claim-by-resource"
+
+	// ClaimLabelKey is the name of the label that denotes if an endpoint wants to claim an already existind record
+	ClaimLabelKey = "claim"
+
 	// AWSSDDescriptionLabel label responsible for storing raw owner/resource combination information in the Labels
 	// supposed to be inserted by AWS SD Provider, and parsed into OwnerLabelKey and ResourceLabelKey key by AWS SD Registry
 	AWSSDDescriptionLabel = "aws-sd-description"

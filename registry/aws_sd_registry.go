@@ -73,6 +73,17 @@ func (sdr *AWSSDRegistry) ApplyChanges(ctx context.Context, changes *plan.Change
 		Delete:    filterOwnedRecords(sdr.ownerID, changes.Delete),
 	}
 
+	for _, ep := range filteredChanges.Create {
+		ep.EnsureOwnerClaimPermission(sdr.ownerID)
+	}
+
+	for _, ep := range filteredChanges.UpdateNew {
+		ep.EnsureOwnerClaimPermission(sdr.ownerID)
+		if ep.OwnerClaimPermitted(sdr.ownerID) {
+			ep.Labels[endpoint.OwnerLabelKey] = sdr.ownerID
+		}
+	}
+
 	sdr.updateLabels(filteredChanges.Create)
 	sdr.updateLabels(filteredChanges.UpdateNew)
 	sdr.updateLabels(filteredChanges.UpdateOld)

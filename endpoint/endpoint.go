@@ -120,6 +120,11 @@ type ProviderSpecificProperty struct {
 // ProviderSpecific holds configuration which is specific to individual DNS providers
 type ProviderSpecific []ProviderSpecificProperty
 
+type ClaimStatus struct {
+	ClaimRequested bool   `json:"inProgress,omitempty"`
+	PermittedOwner string `json:"permittedOwner,omitempty"`
+}
+
 // Endpoint is a high-level way of a connection between a service and an IP
 type Endpoint struct {
 	// The hostname of the DNS record
@@ -138,6 +143,10 @@ type Endpoint struct {
 	// ProviderSpecific stores provider specific config
 	// +optional
 	ProviderSpecific ProviderSpecific `json:"providerSpecific,omitempty"`
+	// ClaimStatus stores if and what the endpoint is claiming, only relevant
+	// if ClaimStatus.Claiming is true
+	// +optional
+	ClaimStatus ClaimStatus `json:"claimPermissions,omitempty"`
 }
 
 // NewEndpoint initialization method to be used to create an endpoint
@@ -193,6 +202,35 @@ func (e *Endpoint) GetProviderSpecificProperty(key string) (ProviderSpecificProp
 
 func (e *Endpoint) String() string {
 	return fmt.Sprintf("%s %d IN %s %s %s %s", e.DNSName, e.RecordTTL, e.RecordType, e.SetIdentifier, e.Targets, e.ProviderSpecific)
+}
+
+// EnsureClaimPermittedOwner ensures that the endpoint has the provided owner id set
+// as its owner claim permission if it has a resource claim permission but no
+// owner claim permission
+func (e *Endpoint) EnsureOwnerClaimPermission(ownerID string) {
+	_, hasResourceClaimPermission := e.Labels[PermitClaimByResourceLabelKey]
+	_, hasOwnerClaimPermission := e.Labels[PermitClaimByOwnerLabelKey]
+
+	if hasResourceClaimPermission && !hasOwnerClaimPermission {
+		e.Labels[PermitClaimByOwnerLabelKey] = ownerID
+	}
+}
+
+// OwnerClaimProhibited can be used to check if and only if an endpoint is permitted to taking ownership
+// of a given ownerID. Only the "true" value is reliable as a "false" result could mean
+// either that the endpoint has not the proper permissions or does not want to claim ownership. Use
+// OwnerClaimProhibited() to check if the endpoint is prohibited of claiming ownership of the given ID.
+func (e *Endpoint) OwnerClaimPermitted(ownerID string) bool {
+	return e.ClaimStatus.ClaimRequested && e.ClaimStatus.PermittedOwner == ownerID
+}
+
+// OwnerClaimProhibited can be used to check if and only if an endpoint is prohibited from taking ownership
+// of a given ownerID. Only the "true" value is reliable as a "false" result could mean
+// either that the endpoint is permitted to claim ownership of the given ID or that it does not want to
+// claim ownership. Use OwnerClaimPermitted() to check if the endpoint is permitted of claiming ownership of
+// the given ID.
+func (e *Endpoint) OwnerClaimProhibited(ownerID string) bool {
+	return e.ClaimStatus.ClaimRequested && e.ClaimStatus.PermittedOwner != ownerID
 }
 
 // DNSEndpointSpec defines the desired state of DNSEndpoint

@@ -162,6 +162,7 @@ func (sc *ingressSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, e
 		log.Debugf("Endpoints generated from ingress: %s/%s: %v", ing.Namespace, ing.Name, ingEndpoints)
 		sc.setResourceLabel(ing, ingEndpoints)
 		sc.setDualstackLabel(ing, ingEndpoints)
+		addClaimLabels(ing.Annotations, ingEndpoints)
 		endpoints = append(endpoints, ingEndpoints...)
 	}
 

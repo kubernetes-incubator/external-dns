@@ -38,6 +38,8 @@ type ResolverSuite struct {
 	bar192A             *endpoint.Endpoint
 	bar127AAnother      *endpoint.Endpoint
 	legacyBar192A       *endpoint.Endpoint // record created in AWS now without resource label
+	bar127APermitClaim  *endpoint.Endpoint
+	bar192AClaim        *endpoint.Endpoint
 	suite.Suite
 }
 
@@ -105,6 +107,24 @@ func (suite *ResolverSuite) SetupTest() {
 		Targets:    endpoint.Targets{"192.168.0.1"},
 		RecordType: "A",
 	}
+	suite.bar127APermitClaim = &endpoint.Endpoint{
+		DNSName:    "bar",
+		Targets:    endpoint.Targets{"127.0.0.1"},
+		RecordType: "A",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey:              "ingress/default/bar-127",
+			endpoint.PermitClaimByResourceLabelKey: "ingress/default/bar-192",
+		},
+	}
+	suite.bar192AClaim = &endpoint.Endpoint{
+		DNSName:    "bar",
+		Targets:    endpoint.Targets{"192.168.0.1"},
+		RecordType: "A",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey: "ingress/default/bar-192",
+			endpoint.ClaimLabelKey:    "true",
+		},
+	}
 }
 
 func (suite *ResolverSuite) TestStrictResolver() {
@@ -131,6 +151,10 @@ func (suite *ResolverSuite) TestStrictResolver() {
 	// legacy record's resource value will not match any candidates resource label
 	// therefore pick minimum again
 	suite.Equal(suite.bar127A, suite.perResource.ResolveUpdate(suite.legacyBar192A, []*endpoint.Endpoint{suite.bar127A, suite.bar192A}), " legacy record's resource value will not match, should pick minimum")
+	// test endpoint claiming
+	suite.Equal(suite.bar127APermitClaim, suite.perResource.ResolveUpdate(suite.bar127APermitClaim, []*endpoint.Endpoint{suite.bar192A, suite.bar127APermitClaim}), "should pick existing resource")
+	suite.Equal(suite.bar192AClaim, suite.perResource.ResolveUpdate(suite.bar127APermitClaim, []*endpoint.Endpoint{suite.bar192AClaim, suite.bar127APermitClaim}), "should pick claiming resource")
+	suite.Equal(suite.bar127A, suite.perResource.ResolveUpdate(suite.bar127A, []*endpoint.Endpoint{suite.bar192AClaim, suite.bar127A}), "should pick existing resource")
 }
 
 func TestConflictResolver(t *testing.T) {

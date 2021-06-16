@@ -131,6 +131,7 @@ func (c *Controller) RunOnce(ctx context.Context) error {
 		deprecatedRegistryErrors.Inc()
 		return err
 	}
+
 	registryEndpointsTotal.Set(float64(len(records)))
 
 	ctx = context.WithValue(ctx, provider.RecordsContextKey, records)

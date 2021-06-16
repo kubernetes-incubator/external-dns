@@ -54,6 +54,38 @@ func (s PerResource) ResolveUpdate(current *endpoint.Endpoint, candidates []*end
 	sort.SliceStable(candidates, func(i, j int) bool {
 		return s.less(candidates[i], candidates[j])
 	})
+
+	// we are dealing with a resource that has specific permissions set on who may claim ownership
+	// if there are endpoints present that are eligible to do so
+	if claimPermittedResource, ok := current.Labels[endpoint.PermitClaimByResourceLabelKey]; ok {
+		var candidate *endpoint.Endpoint
+		for _, ep := range candidates {
+			if ep.Labels[endpoint.ResourceLabelKey] == currentResource {
+				if candidate == nil {
+					candidate = ep
+				}
+				continue
+			}
+			if claim, ok := ep.Labels[endpoint.ClaimLabelKey]; ok && claim == "true" {
+				if ep.Labels[endpoint.ResourceLabelKey] == claimPermittedResource {
+					ep.ClaimStatus.ClaimRequested = true
+					// if no explicit owner claim permission is set, assume
+					// that only the current owner of the record is permitted to claim a resource
+					ep.ClaimStatus.PermittedOwner = current.Labels[endpoint.OwnerLabelKey]
+					if claimPermittedOwner, ok := current.Labels[endpoint.PermitClaimByOwnerLabelKey]; ok {
+						ep.ClaimStatus.PermittedOwner = claimPermittedOwner
+					}
+					return ep
+				}
+			}
+		}
+
+		if candidate != nil {
+			return candidate
+		}
+		return current
+	}
+
 	for _, ep := range candidates {
 		if ep.Labels[endpoint.ResourceLabelKey] == currentResource {
 			return ep

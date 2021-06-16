@@ -28,26 +28,31 @@ import (
 
 type PlanTestSuite struct {
 	suite.Suite
-	fooV1Cname                       *endpoint.Endpoint
-	fooV2Cname                       *endpoint.Endpoint
-	fooV2CnameUppercase              *endpoint.Endpoint
-	fooV2TXT                         *endpoint.Endpoint
-	fooV2CnameNoLabel                *endpoint.Endpoint
-	fooV3CnameSameResource           *endpoint.Endpoint
-	fooA5                            *endpoint.Endpoint
-	bar127A                          *endpoint.Endpoint
-	bar127AWithTTL                   *endpoint.Endpoint
-	bar127AWithProviderSpecificTrue  *endpoint.Endpoint
-	bar127AWithProviderSpecificFalse *endpoint.Endpoint
-	bar127AWithProviderSpecificUnset *endpoint.Endpoint
-	bar192A                          *endpoint.Endpoint
-	multiple1                        *endpoint.Endpoint
-	multiple2                        *endpoint.Endpoint
-	multiple3                        *endpoint.Endpoint
-	domainFilterFiltered1            *endpoint.Endpoint
-	domainFilterFiltered2            *endpoint.Endpoint
-	domainFilterFiltered3            *endpoint.Endpoint
-	domainFilterExcluded             *endpoint.Endpoint
+	fooV1Cname                         *endpoint.Endpoint
+	fooV1CnameClaimable                *endpoint.Endpoint
+	fooV1CnameClaimableNoOwner         *endpoint.Endpoint
+	fooV1CnameClaimableNewOwnerPerm    *endpoint.Endpoint
+	fooV1CnameClaimableNewResourcePerm *endpoint.Endpoint
+	fooV1BCnameClaim                   *endpoint.Endpoint
+	fooV2Cname                         *endpoint.Endpoint
+	fooV2CnameUppercase                *endpoint.Endpoint
+	fooV2TXT                           *endpoint.Endpoint
+	fooV2CnameNoLabel                  *endpoint.Endpoint
+	fooV3CnameSameResource             *endpoint.Endpoint
+	fooA5                              *endpoint.Endpoint
+	bar127A                            *endpoint.Endpoint
+	bar127AWithTTL                     *endpoint.Endpoint
+	bar127AWithProviderSpecificTrue    *endpoint.Endpoint
+	bar127AWithProviderSpecificFalse   *endpoint.Endpoint
+	bar127AWithProviderSpecificUnset   *endpoint.Endpoint
+	bar192A                            *endpoint.Endpoint
+	multiple1                          *endpoint.Endpoint
+	multiple2                          *endpoint.Endpoint
+	multiple3                          *endpoint.Endpoint
+	domainFilterFiltered1              *endpoint.Endpoint
+	domainFilterFiltered2              *endpoint.Endpoint
+	domainFilterFiltered3              *endpoint.Endpoint
+	domainFilterExcluded               *endpoint.Endpoint
 }
 
 func (suite *PlanTestSuite) SetupTest() {
@@ -58,6 +63,58 @@ func (suite *PlanTestSuite) SetupTest() {
 		Labels: map[string]string{
 			endpoint.ResourceLabelKey: "ingress/default/foo-v1",
 			endpoint.OwnerLabelKey:    "pwner",
+		},
+	}
+	suite.fooV1CnameClaimable = &endpoint.Endpoint{
+		DNSName:    "foo",
+		Targets:    endpoint.Targets{"v1"},
+		RecordType: "CNAME",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey:              "ingress/default/foo-v1",
+			endpoint.PermitClaimByResourceLabelKey: "ingress/default/foo-v1b",
+			endpoint.PermitClaimByOwnerLabelKey:    "pwner",
+			endpoint.OwnerLabelKey:                 "pwner",
+		},
+	}
+	suite.fooV1CnameClaimableNoOwner = &endpoint.Endpoint{
+		DNSName:    "foo",
+		Targets:    endpoint.Targets{"v1"},
+		RecordType: "CNAME",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey:              "ingress/default/foo-v1",
+			endpoint.PermitClaimByResourceLabelKey: "ingress/default/foo-v1b",
+			endpoint.OwnerLabelKey:                 "pwner",
+		},
+	}
+	suite.fooV1CnameClaimableNewOwnerPerm = &endpoint.Endpoint{
+		DNSName:    "foo",
+		Targets:    endpoint.Targets{"v1"},
+		RecordType: "CNAME",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey:              "ingress/default/foo-v1",
+			endpoint.PermitClaimByResourceLabelKey: "ingress/default/foo-v1b",
+			endpoint.PermitClaimByOwnerLabelKey:    "someowner",
+			endpoint.OwnerLabelKey:                 "pwner",
+		},
+	}
+	suite.fooV1CnameClaimableNewResourcePerm = &endpoint.Endpoint{
+		DNSName:    "foo",
+		Targets:    endpoint.Targets{"v1"},
+		RecordType: "CNAME",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey:              "ingress/default/foo-v1",
+			endpoint.PermitClaimByResourceLabelKey: "ingress/default/foo-v1c",
+			endpoint.PermitClaimByOwnerLabelKey:    "pwner",
+			endpoint.OwnerLabelKey:                 "pwner",
+		},
+	}
+	suite.fooV1BCnameClaim = &endpoint.Endpoint{
+		DNSName:    "foo",
+		Targets:    endpoint.Targets{"v1"},
+		RecordType: "CNAME",
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey: "ingress/default/foo-v1b",
+			endpoint.ClaimLabelKey:    "true",
 		},
 	}
 	// same resource as fooV1Cname, but target is different. It will never be picked because its target lexicographically bigger than "v1"
@@ -396,6 +453,128 @@ func (suite *PlanTestSuite) TestSyncSecondRoundWithOwnerInherited() {
 	validateEntries(suite.T(), changes.Delete, expectedDelete)
 }
 
+func (suite *PlanTestSuite) TestEnforcingClaimPermission() {
+	current := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	desired := []*endpoint.Endpoint{suite.fooV2Cname}
+
+	expectedCreate := []*endpoint.Endpoint{}
+	expectedUpdateOld := []*endpoint.Endpoint{}
+	expectedUpdateNew := []*endpoint.Endpoint{}
+	expectedDelete := []*endpoint.Endpoint{}
+
+	p := &Plan{
+		Policies:       []Policy{&SyncPolicy{}},
+		Current:        current,
+		Desired:        desired,
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+	}
+
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, expectedCreate)
+	validateEntries(suite.T(), changes.UpdateNew, expectedUpdateNew)
+	validateEntries(suite.T(), changes.UpdateOld, expectedUpdateOld)
+	validateEntries(suite.T(), changes.Delete, expectedDelete)
+}
+
+func (suite *PlanTestSuite) TestAddingClaimPermissions() {
+	current := []*endpoint.Endpoint{suite.fooV1Cname}
+	desired := []*endpoint.Endpoint{suite.fooV1CnameClaimableNoOwner}
+	expectedCreate := []*endpoint.Endpoint{}
+	expectedUpdateOld := []*endpoint.Endpoint{suite.fooV1Cname}
+	expectedUpdateNew := []*endpoint.Endpoint{suite.fooV1CnameClaimableNoOwner}
+	expectedDelete := []*endpoint.Endpoint{}
+
+	p := &Plan{
+		Policies:       []Policy{&SyncPolicy{}},
+		Current:        current,
+		Desired:        desired,
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+	}
+
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, expectedCreate)
+	validateEntries(suite.T(), changes.UpdateNew, expectedUpdateNew)
+	validateEntries(suite.T(), changes.UpdateOld, expectedUpdateOld)
+	validateEntries(suite.T(), changes.Delete, expectedDelete)
+}
+
+func (suite *PlanTestSuite) TestChangeOwnerClaimPermissions() {
+	current := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	desired := []*endpoint.Endpoint{suite.fooV1CnameClaimableNewOwnerPerm}
+	expectedCreate := []*endpoint.Endpoint{}
+	expectedUpdateOld := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	expectedUpdateNew := []*endpoint.Endpoint{suite.fooV1CnameClaimableNewOwnerPerm}
+	expectedDelete := []*endpoint.Endpoint{}
+
+	p := &Plan{
+		Policies:       []Policy{&SyncPolicy{}},
+		Current:        current,
+		Desired:        desired,
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+	}
+
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, expectedCreate)
+	validateEntries(suite.T(), changes.UpdateNew, expectedUpdateNew)
+	validateEntries(suite.T(), changes.UpdateOld, expectedUpdateOld)
+	validateEntries(suite.T(), changes.Delete, expectedDelete)
+}
+
+func (suite *PlanTestSuite) TestChangeResourceClaimPermissions() {
+	current := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	desired := []*endpoint.Endpoint{suite.fooV1CnameClaimableNewResourcePerm}
+	expectedCreate := []*endpoint.Endpoint{}
+	expectedUpdateOld := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	expectedUpdateNew := []*endpoint.Endpoint{suite.fooV1CnameClaimableNewResourcePerm}
+	expectedDelete := []*endpoint.Endpoint{}
+
+	p := &Plan{
+		Policies:       []Policy{&SyncPolicy{}},
+		Current:        current,
+		Desired:        desired,
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+	}
+
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, expectedCreate)
+	validateEntries(suite.T(), changes.UpdateNew, expectedUpdateNew)
+	validateEntries(suite.T(), changes.UpdateOld, expectedUpdateOld)
+	validateEntries(suite.T(), changes.Delete, expectedDelete)
+}
+
+func (suite *PlanTestSuite) TestClaiming() {
+	current := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	desired := []*endpoint.Endpoint{suite.fooV1BCnameClaim}
+
+	expectedCreate := []*endpoint.Endpoint{}
+	expectedUpdateOld := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	expectedUpdateNew := []*endpoint.Endpoint{{
+		DNSName:    suite.fooV1BCnameClaim.DNSName,
+		Targets:    suite.fooV1BCnameClaim.Targets,
+		RecordType: suite.fooV1BCnameClaim.RecordType,
+		RecordTTL:  suite.fooV1BCnameClaim.RecordTTL,
+		Labels: map[string]string{
+			endpoint.ResourceLabelKey: suite.fooV1BCnameClaim.Labels[endpoint.ResourceLabelKey],
+			endpoint.ClaimLabelKey:    suite.fooV1BCnameClaim.Labels[endpoint.ClaimLabelKey],
+			endpoint.OwnerLabelKey:    suite.fooV1CnameClaimable.Labels[endpoint.OwnerLabelKey],
+		},
+	}}
+	expectedDelete := []*endpoint.Endpoint{}
+
+	p := &Plan{
+		Policies:       []Policy{&SyncPolicy{}},
+		Current:        current,
+		Desired:        desired,
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+	}
+
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, expectedCreate)
+	validateEntries(suite.T(), changes.UpdateNew, expectedUpdateNew)
+	validateEntries(suite.T(), changes.UpdateOld, expectedUpdateOld)
+	validateEntries(suite.T(), changes.Delete, expectedDelete)
+}
+
 func (suite *PlanTestSuite) TestIdempotency() {
 	current := []*endpoint.Endpoint{suite.fooV1Cname, suite.fooV2Cname}
 	desired := []*endpoint.Endpoint{suite.fooV1Cname, suite.fooV2Cname}
@@ -408,6 +587,50 @@ func (suite *PlanTestSuite) TestIdempotency() {
 		Policies: []Policy{&SyncPolicy{}},
 		Current:  current,
 		Desired:  desired,
+	}
+
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, expectedCreate)
+	validateEntries(suite.T(), changes.UpdateNew, expectedUpdateNew)
+	validateEntries(suite.T(), changes.UpdateOld, expectedUpdateOld)
+	validateEntries(suite.T(), changes.Delete, expectedDelete)
+}
+
+func (suite *PlanTestSuite) TestClaimPermissionIdempotencyOwner() {
+	current := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	desired := []*endpoint.Endpoint{suite.fooV1CnameClaimableNoOwner}
+	expectedCreate := []*endpoint.Endpoint{}
+	expectedUpdateOld := []*endpoint.Endpoint{}
+	expectedUpdateNew := []*endpoint.Endpoint{}
+	expectedDelete := []*endpoint.Endpoint{}
+
+	p := &Plan{
+		Policies:       []Policy{&SyncPolicy{}},
+		Current:        current,
+		Desired:        desired,
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+	}
+
+	changes := p.Calculate().Changes
+	validateEntries(suite.T(), changes.Create, expectedCreate)
+	validateEntries(suite.T(), changes.UpdateNew, expectedUpdateNew)
+	validateEntries(suite.T(), changes.UpdateOld, expectedUpdateOld)
+	validateEntries(suite.T(), changes.Delete, expectedDelete)
+}
+
+func (suite *PlanTestSuite) TestClaimPermissionIdempotency() {
+	current := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	desired := []*endpoint.Endpoint{suite.fooV1CnameClaimable}
+	expectedCreate := []*endpoint.Endpoint{}
+	expectedUpdateOld := []*endpoint.Endpoint{}
+	expectedUpdateNew := []*endpoint.Endpoint{}
+	expectedDelete := []*endpoint.Endpoint{}
+
+	p := &Plan{
+		Policies:       []Policy{&SyncPolicy{}},
+		Current:        current,
+		Desired:        desired,
+		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
 	}
 
 	changes := p.Calculate().Changes

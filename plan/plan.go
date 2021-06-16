@@ -143,8 +143,19 @@ func (p *Plan) Calculate() *Plan {
 			if row.current != nil && len(row.candidates) > 0 { //dns name is taken
 				update := t.resolver.ResolveUpdate(row.current, row.candidates)
 				// compare "update" to "current" to figure out if actual update is required
-				if shouldUpdateTTL(update, row.current) || targetChanged(update, row.current) || p.shouldUpdateProviderSpecific(update, row.current) {
+				if shouldUpdate(p, update, row.current) {
 					inheritOwner(row.current, update)
+
+					// if the registry filters out the updated endpoint because it wants
+					// to claim ownership but is not permitted to do so
+					// (e.g. update.ClaimStatus.PermittedOwner != registry.ownerID)
+					// ensure that it also filters out the update to the current endpoint because
+					// at least the AWS provider requires that
+					// changes.UpdateNew[x] == update && changes.UpdateOld[x] == current
+					if update.ClaimStatus.ClaimRequested {
+						row.current.ClaimStatus.ClaimRequested = true
+						row.current.ClaimStatus.PermittedOwner = update.ClaimStatus.PermittedOwner
+					}
 					changes.UpdateNew = append(changes.UpdateNew, update)
 					changes.UpdateOld = append(changes.UpdateOld, row.current)
 				}
@@ -166,6 +177,11 @@ func (p *Plan) Calculate() *Plan {
 	return plan
 }
 
+func shouldUpdate(p *Plan, update, current *endpoint.Endpoint) bool {
+	return shouldUpdateTTL(update, current) || targetChanged(update, current) ||
+		claimPermissionsChanged(update, current) || p.shouldUpdateProviderSpecific(update, current)
+}
+
 func inheritOwner(from, to *endpoint.Endpoint) {
 	if to.Labels == nil {
 		to.Labels = map[string]string{}
@@ -178,6 +194,35 @@ func inheritOwner(from, to *endpoint.Endpoint) {
 
 func targetChanged(desired, current *endpoint.Endpoint) bool {
 	return !desired.Targets.Same(current.Targets)
+}
+
+func claimPermissionsChanged(desired, current *endpoint.Endpoint) bool {
+	if desired == current {
+		return false
+	}
+
+	// the claim labels can be set by annotations so they can change independently
+	// of everything else of the endpoint
+	equal := desired.Labels[endpoint.ClaimLabelKey] == current.Labels[endpoint.ClaimLabelKey] &&
+		desired.Labels[endpoint.PermitClaimByResourceLabelKey] == current.Labels[endpoint.PermitClaimByResourceLabelKey]
+
+	// if a resource claim permission is set but no owner claim permission, the registry
+	// will(should) set the owner claim permission to the current owner so we have to account for that
+	_, hasClaimPermittedOwner := desired.Labels[endpoint.PermitClaimByOwnerLabelKey]
+	_, hasClaimPermittedResource := desired.Labels[endpoint.PermitClaimByOwnerLabelKey]
+	if hasClaimPermittedOwner {
+		equal = equal && desired.Labels[endpoint.PermitClaimByOwnerLabelKey] == current.Labels[endpoint.PermitClaimByOwnerLabelKey]
+	}
+	equal = equal && !(hasClaimPermittedResource && !(hasClaimPermittedOwner))
+
+	// ownership only matters if the endpoint is actually trying to claim something
+	if desired.ClaimStatus.ClaimRequested {
+		equal = equal &&
+			desired.Labels[endpoint.ResourceLabelKey] == current.Labels[endpoint.ResourceLabelKey] &&
+			desired.ClaimStatus.PermittedOwner == current.Labels[endpoint.OwnerLabelKey]
+	}
+
+	return !equal
 }
 
 func shouldUpdateTTL(desired, current *endpoint.Endpoint) bool {

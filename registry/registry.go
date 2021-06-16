@@ -40,11 +40,28 @@ type Registry interface {
 func filterOwnedRecords(ownerID string, eps []*endpoint.Endpoint) []*endpoint.Endpoint {
 	filtered := []*endpoint.Endpoint{}
 	for _, ep := range eps {
-		if endpointOwner, ok := ep.Labels[endpoint.OwnerLabelKey]; !ok || endpointOwner != ownerID {
+		if endpointOwner, ok := ep.Labels[endpoint.OwnerLabelKey]; !ok || endpointOwner != ownerID || ep.OwnerClaimProhibited(ownerID) {
+			if ep.ClaimStatus.ClaimRequested {
+				log.Debugf(`Skipping endpoint %v because it is not permitted to claim owner id, found: "%s", required: "%s"`, ep, ep.ClaimStatus.PermittedOwner, ownerID)
+				continue
+			}
 			log.Debugf(`Skipping endpoint %v because owner id does not match, found: "%s", required: "%s"`, ep, endpointOwner, ownerID)
 			continue
 		}
 		filtered = append(filtered, ep)
 	}
 	return filtered
+}
+
+func filterLabels(ep *endpoint.Endpoint) {
+	for k := range ep.Labels {
+		switch k {
+		case endpoint.ClaimLabelKey:
+			delete(ep.Labels, k)
+		case endpoint.PermitClaimByOwnerLabelKey:
+			delete(ep.Labels, k)
+		case endpoint.PermitClaimByResourceLabelKey:
+			delete(ep.Labels, k)
+		}
+	}
 }
