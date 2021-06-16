@@ -112,7 +112,7 @@ func (p *RcodeZeroProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, 
 		}
 
 		for _, r := range rrset {
-			if provider.SupportedRecordType(r.Type) {
+			if endpoint.SupportedRecordType(r.Type) {
 				if p.TXTEncrypt && (p.Key != nil) && strings.EqualFold(r.Type, "TXT") {
 					p.Client.RRSet.DecryptTXT(p.Key, r)
 				}

@@ -211,7 +211,7 @@ func (p *GoogleProvider) Records(ctx context.Context) (endpoints []*endpoint.End
 
 	f := func(resp *dns.ResourceRecordSetsListResponse) error {
 		for _, r := range resp.Rrsets {
-			if !provider.SupportedRecordType(r.Type) {
+			if !endpoint.SupportedRecordType(r.Type) {
 				continue
 			}
 			endpoints = append(endpoints, endpoint.NewEndpointWithTTL(r.Name, r.Type, endpoint.TTL(r.Ttl), r.Rrdatas...))

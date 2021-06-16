@@ -77,7 +77,7 @@ func (p *HetznerProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, er
 		}
 
 		for _, r := range records.Records {
-			if provider.SupportedRecordType(string(r.RecordType)) {
+			if endpoint.SupportedRecordType(string(r.RecordType)) {
 				name := r.Name + "." + zone.Name
 
 				if r.Name == "@" {

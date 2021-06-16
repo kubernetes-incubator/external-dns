@@ -189,7 +189,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 
 			for _, r := range records {
 				recordTypeArray := strings.Fields(r.RRType)
-				if provider.SupportedRecordType(recordTypeArray[0]) {
+				if endpoint.SupportedRecordType(recordTypeArray[0]) {
 					log.Infof("owner name %s", r.OwnerName)
 					name := r.OwnerName
 

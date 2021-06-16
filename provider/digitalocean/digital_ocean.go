@@ -163,7 +163,7 @@ func (p *DigitalOceanProvider) Records(ctx context.Context) ([]*endpoint.Endpoin
 		}
 
 		for _, r := range records {
-			if provider.SupportedRecordType(r.Type) {
+			if endpoint.SupportedRecordType(r.Type) {
 				name := r.Name + "." + zone.Name
 
 				// root name is identified by @ and should be

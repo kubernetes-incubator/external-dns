@@ -315,7 +315,7 @@ func (p *AWSProvider) records(ctx context.Context, zones map[string]*route53.Hos
 			// TODO(linki, ownership): Remove once ownership system is in place.
 			// See: https://github.com/kubernetes-sigs/external-dns/pull/122/files/74e2c3d3e237411e619aefc5aab694742001cdec#r109863370
 
-			if !provider.SupportedRecordType(aws.StringValue(r.Type)) {
+			if !endpoint.SupportedRecordType(aws.StringValue(r.Type)) {
 				continue
 			}
 

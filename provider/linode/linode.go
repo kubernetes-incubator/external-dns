@@ -128,7 +128,7 @@ func (p *LinodeProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, err
 		}
 
 		for _, r := range records {
-			if provider.SupportedRecordType(string(r.Type)) {
+			if endpoint.SupportedRecordType(string(r.Type)) {
 				name := fmt.Sprintf("%s.%s", r.Name, zone.Domain)
 
 				// root name is identified by the empty string and should be

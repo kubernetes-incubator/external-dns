@@ -44,7 +44,6 @@ type Plan struct {
 	// Property comparator compares custom properties of providers
 	PropertyComparator PropertyComparator
 	// DNS record types that will be considered for management
-	ManagedRecords []string
 }
 
 // Changes holds lists of actions to be executed by dns providers
@@ -121,10 +120,10 @@ func (t planTable) addCandidate(e *endpoint.Endpoint) {
 func (p *Plan) Calculate() *Plan {
 	t := newPlanTable()
 
-	for _, current := range filterRecordsForPlan(p.Current, p.DomainFilter, p.ManagedRecords) {
+	for _, current := range filterRecordsForPlan(p.Current, p.DomainFilter) {
 		t.addCurrent(current)
 	}
-	for _, desired := range filterRecordsForPlan(p.Desired, p.DomainFilter, p.ManagedRecords) {
+	for _, desired := range filterRecordsForPlan(p.Desired, p.DomainFilter) {
 		t.addCandidate(desired)
 	}
 
@@ -157,11 +156,9 @@ func (p *Plan) Calculate() *Plan {
 	}
 
 	plan := &Plan{
-		Current:        p.Current,
-		Desired:        p.Desired,
-		Changes:        changes,
-		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
-	}
+		Current: p.Current,
+		Desired: p.Desired,
+		Changes: changes}
 
 	return plan
 }
@@ -227,7 +224,7 @@ func (p *Plan) shouldUpdateProviderSpecific(desired, current *endpoint.Endpoint)
 // Per RFC 1034, CNAME records conflict with all other records - it is the
 // only record with this property. The behavior of the planner may need to be
 // made more sophisticated to codify this.
-func filterRecordsForPlan(records []*endpoint.Endpoint, domainFilter endpoint.DomainFilter, managedRecords []string) []*endpoint.Endpoint {
+func filterRecordsForPlan(records []*endpoint.Endpoint, domainFilter endpoint.DomainFilter) []*endpoint.Endpoint {
 	filtered := []*endpoint.Endpoint{}
 
 	for _, record := range records {
@@ -235,8 +232,11 @@ func filterRecordsForPlan(records []*endpoint.Endpoint, domainFilter endpoint.Do
 		if !domainFilter.Match(record.DNSName) {
 			continue
 		}
-		if isManagedRecord(record.RecordType, managedRecords) {
+
+		if endpoint.SupportedRecordType(record.RecordType) {
 			filtered = append(filtered, record)
+		} else {
+			continue
 		}
 	}
 
@@ -276,13 +276,4 @@ func CompareBoolean(defaultValue bool, name, current, previous string) bool {
 	}
 
 	return v1 == v2
-}
-
-func isManagedRecord(record string, managedRecords []string) bool {
-	for _, r := range managedRecords {
-		if record == r {
-			return true
-		}
-	}
-	return false
 }

@@ -14,37 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package endpoint
 
-import "testing"
-
-func TestRecordTypeFilter(t *testing.T) {
-	var records = []struct {
-		rtype  string
-		expect bool
-	}{
-		{
-			"A",
-			true,
-		},
-		{
-			"CNAME",
-			true,
-		},
-		{
-			"TXT",
-			true,
-		},
-		{
-			"MX",
-			false,
-		},
-	}
-	for _, r := range records {
-		got := SupportedRecordType(r.rtype)
-		if r.expect != got {
-			t.Errorf("wrong record type %s: expect %v, but got %v", r.rtype, r.expect, got)
-		}
-
+// SupportedRecordType returns true only for supported record types.
+// Currently A, CNAME, SRV, TXT and NS record types are supported.
+func SupportedRecordType(recordType string) bool {
+	switch recordType {
+	case RecordTypeA, RecordTypeCNAME, RecordTypeTXT, RecordTypeSRV, RecordTypeNS:
+		return true
+	default:
+		return false
 	}
 }

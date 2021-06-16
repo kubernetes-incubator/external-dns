@@ -233,7 +233,7 @@ func (p AkamaiProvider) Records(context.Context) (endpoints []*endpoint.Endpoint
 		}
 
 		for _, recordset := range recordsets.Recordsets {
-			if !provider.SupportedRecordType(recordset.Type) {
+			if !endpoint.SupportedRecordType(recordset.Type) {
 				log.Debugf("Skipping endpoint DNSName: '%s' RecordType: '%s'. Record type not supported.", recordset.Name, recordset.Type)
 				continue
 			}

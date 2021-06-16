@@ -2699,7 +2699,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				require.NoError(t, err)
 
 				address := v1.EndpointAddress{
-					IP: "4.3.2.1",
+					IP:        "4.3.2.1",
 					TargetRef: tc.targetRefs[i],
 				}
 				if tc.podsReady[i] {

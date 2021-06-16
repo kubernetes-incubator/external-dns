@@ -135,7 +135,7 @@ func (p *ScalewayProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 			// trim any leading or ending dot
 			fullRecordName := strings.Trim(name+getCompleteZoneName(zone), ".")
 
-			if !provider.SupportedRecordType(record.Type.String()) {
+			if !endpoint.SupportedRecordType(record.Type.String()) {
 				log.Infof("Skipping record %s because type %s is not supported", fullRecordName, record.Type.String())
 				continue
 			}

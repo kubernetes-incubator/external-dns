@@ -426,7 +426,7 @@ func groupByNameAndType(records []cloudflare.DNSRecord) []*endpoint.Endpoint {
 	groups := map[string][]cloudflare.DNSRecord{}
 
 	for _, r := range records {
-		if !provider.SupportedRecordType(r.Type) {
+		if !endpoint.SupportedRecordType(r.Type) {
 			continue
 		}
 

@@ -273,7 +273,7 @@ func (p *TransIPProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, er
 		}
 
 		for _, r := range entries {
-			if !provider.SupportedRecordType(r.Type) {
+			if !endpoint.SupportedRecordType(r.Type) {
 				continue
 			}
 

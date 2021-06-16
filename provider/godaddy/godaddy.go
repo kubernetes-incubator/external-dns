@@ -248,7 +248,7 @@ func (p *GDProvider) records(ctx *context.Context, zone string, all bool) (*gdRe
 	}
 
 	for _, rec := range recordsIds {
-		if provider.SupportedRecordType(rec.Type) {
+		if endpoint.SupportedRecordType(rec.Type) {
 			log.Debugf("GoDaddy: Record %s for %s is %+v", rec.Name, zone, rec)
 
 			results.records = append(results.records, rec)

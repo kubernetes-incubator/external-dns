@@ -253,7 +253,7 @@ func (p *OVHProvider) record(zone *string, id uint64, records chan<- ovhRecord) 
 	if err := p.client.Get(fmt.Sprintf("/domain/zone/%s/record/%d", *zone, id), &record); err != nil {
 		return err
 	}
-	if provider.SupportedRecordType(record.FieldType) {
+	if endpoint.SupportedRecordType(record.FieldType) {
 		log.Debugf("OVH: Record %d for %s is %+v", id, *zone, record)
 		records <- record
 	}

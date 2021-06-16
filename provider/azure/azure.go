@@ -108,7 +108,7 @@ func (p *AzureProvider) Records(ctx context.Context) (endpoints []*endpoint.Endp
 				return true
 			}
 			recordType := strings.TrimPrefix(*recordSet.Type, "Microsoft.Network/dnszones/")
-			if !provider.SupportedRecordType(recordType) {
+			if !endpoint.SupportedRecordType(recordType) {
 				return true
 			}
 			name := formatAzureDNSName(*recordSet.Name, *zone.Name)

@@ -446,7 +446,7 @@ func (p *AlibabaCloudProvider) getDomainRecords(domainName string) ([]alidns.Rec
 			if !p.domainFilter.Match(domainName) {
 				continue
 			}
-			if !provider.SupportedRecordType(recordType) {
+			if !endpoint.SupportedRecordType(recordType) {
 				continue
 			}
 			//TODO filter Locked record
@@ -785,7 +785,7 @@ func (p *AlibabaCloudProvider) getPrivateZones() (map[string]*alibabaPrivateZone
 			for _, record := range response.Records.Record {
 				recordType := record.Type
 
-				if !provider.SupportedRecordType(recordType) {
+				if !endpoint.SupportedRecordType(recordType) {
 					continue
 				}
 

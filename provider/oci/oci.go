@@ -179,7 +179,7 @@ func (p *OCIProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error)
 			}
 
 			for _, record := range resp.Items {
-				if !provider.SupportedRecordType(*record.Rtype) {
+				if !endpoint.SupportedRecordType(*record.Rtype) {
 					continue
 				}
 				endpoints = append(endpoints,

@@ -102,7 +102,7 @@ func (p *VultrProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, erro
 		}
 
 		for _, r := range records {
-			if provider.SupportedRecordType(r.Type) {
+			if endpoint.SupportedRecordType(r.Type) {
 				name := fmt.Sprintf("%s.%s", r.Name, zone.Domain)
 
 				// root name is identified by the empty string and should be

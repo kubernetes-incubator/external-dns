@@ -99,7 +99,7 @@ func (p *vinyldnsProvider) Records(ctx context.Context) (endpoints []*endpoint.E
 		}
 
 		for _, r := range records {
-			if provider.SupportedRecordType(r.Type) {
+			if endpoint.SupportedRecordType(r.Type) {
 				recordsCount := len(r.Records)
 				log.Debugf(fmt.Sprintf("%s.%s.%d.%s", r.Name, r.Type, recordsCount, zone.Name))
 

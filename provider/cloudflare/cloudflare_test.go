@@ -229,7 +229,7 @@ func (m *mockCloudFlareClient) ZoneDetails(zoneID string) (cloudflare.Zone, erro
 	return cloudflare.Zone{}, errors.New("Unknown zoneID: " + zoneID)
 }
 
-func AssertActions(t *testing.T, provider *CloudFlareProvider, endpoints []*endpoint.Endpoint, actions []MockAction, managedRecords []string, args ...interface{}) {
+func AssertActions(t *testing.T, provider *CloudFlareProvider, endpoints []*endpoint.Endpoint, actions []MockAction, args ...interface{}) {
 	t.Helper()
 
 	var client *mockCloudFlareClient
@@ -250,18 +250,16 @@ func AssertActions(t *testing.T, provider *CloudFlareProvider, endpoints []*endp
 	}
 
 	plan := &plan.Plan{
-		Current:        records,
-		Desired:        endpoints,
-		DomainFilter:   endpoint.NewDomainFilter([]string{"bar.com"}),
-		ManagedRecords: managedRecords,
+		Current:      records,
+		Desired:      endpoints,
+		DomainFilter: endpoint.NewDomainFilter([]string{"bar.com"}),
 	}
 
 	changes := plan.Calculate().Changes
 
-	// Records other than A, CNAME and NS are not supported by planner, just create them
-	for _, endpoint := range endpoints {
-		if endpoint.RecordType != "A" && endpoint.RecordType != "CNAME" && endpoint.RecordType != "NS" {
-			changes.Create = append(changes.Create, endpoint)
+	for _, ep := range endpoints {
+		if !endpoint.SupportedRecordType(ep.RecordType) {
+			changes.Create = append(changes.Create, ep)
 		}
 	}
 
@@ -1054,7 +1052,6 @@ func TestProviderPropertiesIdempotency(t *testing.T) {
 			Current:            current,
 			Desired:            desired,
 			PropertyComparator: provider.PropertyValuesEqual,
-			ManagedRecords:     []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
 		}
 
 		plan = *plan.Calculate()
@@ -1108,8 +1105,7 @@ func TestCloudflareComplexUpdate(t *testing.T) {
 				},
 			},
 		},
-		DomainFilter:   endpoint.NewDomainFilter([]string{"bar.com"}),
-		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+		DomainFilter: endpoint.NewDomainFilter([]string{"bar.com"}),
 	}
 
 	planned := plan.Calculate()
@@ -1196,10 +1192,9 @@ func TestCustomTTLWithEnabledProxyNotChanged(t *testing.T) {
 	provider.AdjustEndpoints(endpoints)
 
 	plan := &plan.Plan{
-		Current:        records,
-		Desired:        endpoints,
-		DomainFilter:   endpoint.NewDomainFilter([]string{"bar.com"}),
-		ManagedRecords: []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+		Current:      records,
+		Desired:      endpoints,
+		DomainFilter: endpoint.NewDomainFilter([]string{"bar.com"}),
 	}
 
 	planned := plan.Calculate()

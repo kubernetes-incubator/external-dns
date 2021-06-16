@@ -162,7 +162,7 @@ func (p *NS1Provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error)
 		}
 
 		for _, record := range zoneData.Records {
-			if provider.SupportedRecordType(record.Type) {
+			if endpoint.SupportedRecordType(record.Type) {
 				endpoints = append(endpoints, endpoint.NewEndpointWithTTL(
 					record.Domain,
 					record.Type,
