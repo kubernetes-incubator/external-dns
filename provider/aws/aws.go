@@ -150,6 +150,8 @@ type AWSProvider struct {
 	domainFilter endpoint.DomainFilter
 	// filter hosted zones by id
 	zoneIDFilter provider.ZoneIDFilter
+	// filter hosted zones by name
+	zoneNameFilter provider.ZoneNameFilter
 	// filter hosted zones by type (e.g. private or public)
 	zoneTypeFilter provider.ZoneTypeFilter
 	// filter hosted zones by tags
@@ -162,6 +164,7 @@ type AWSProvider struct {
 type AWSConfig struct {
 	DomainFilter         endpoint.DomainFilter
 	ZoneIDFilter         provider.ZoneIDFilter
+	ZoneNameFilter       provider.ZoneNameFilter
 	ZoneTypeFilter       provider.ZoneTypeFilter
 	ZoneTagFilter        provider.ZoneTagFilter
 	BatchChangeSize      int
@@ -204,6 +207,7 @@ func NewAWSProvider(awsConfig AWSConfig) (*AWSProvider, error) {
 		client:               route53.New(session),
 		domainFilter:         awsConfig.DomainFilter,
 		zoneIDFilter:         awsConfig.ZoneIDFilter,
+		zoneNameFilter:       awsConfig.ZoneNameFilter,
 		zoneTypeFilter:       awsConfig.ZoneTypeFilter,
 		zoneTagFilter:        awsConfig.ZoneTagFilter,
 		batchChangeSize:      awsConfig.BatchChangeSize,
@@ -245,7 +249,12 @@ func (p *AWSProvider) Zones(ctx context.Context) (map[string]*route53.HostedZone
 				continue
 			}
 
-			if !p.domainFilter.Match(aws.StringValue(zone.Name)) {
+			// zoneNameFilter overrides domainFilter
+			if p.zoneNameFilter.IsConfigured() {
+				if !p.zoneNameFilter.Match(aws.StringValue(zone.Name)) {
+					continue
+				}
+			} else if !p.domainFilter.Match(aws.StringValue(zone.Name)) {
 				continue
 			}
 

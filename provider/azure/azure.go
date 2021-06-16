@@ -52,7 +52,7 @@ type RecordSetsClient interface {
 type AzureProvider struct {
 	provider.BaseProvider
 	domainFilter                 endpoint.DomainFilter
-	zoneNameFilter               endpoint.DomainFilter
+	zoneNameFilter               provider.ZoneNameFilter
 	zoneIDFilter                 provider.ZoneIDFilter
 	dryRun                       bool
 	resourceGroup                string
@@ -64,7 +64,7 @@ type AzureProvider struct {
 // NewAzureProvider creates a new Azure provider.
 //
 // Returns the provider or an error if a provider could not be created.
-func NewAzureProvider(configFile string, domainFilter endpoint.DomainFilter, zoneNameFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, resourceGroup string, userAssignedIdentityClientID string, dryRun bool) (*AzureProvider, error) {
+func NewAzureProvider(configFile string, domainFilter endpoint.DomainFilter, zoneNameFilter provider.ZoneNameFilter, zoneIDFilter provider.ZoneIDFilter, resourceGroup string, userAssignedIdentityClientID string, dryRun bool) (*AzureProvider, error) {
 	cfg, err := getConfig(configFile, resourceGroup, userAssignedIdentityClientID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Azure config file '%s': %v", configFile, err)
@@ -113,7 +113,7 @@ func (p *AzureProvider) Records(ctx context.Context) (endpoints []*endpoint.Endp
 			}
 			name := formatAzureDNSName(*recordSet.Name, *zone.Name)
 
-			if len(p.zoneNameFilter.Filters) > 0 && !p.domainFilter.Match(name) {
+			if len(p.zoneNameFilter.ZoneNames) > 0 && !p.domainFilter.Match(name) {
 				log.Debugf("Skipping return of record %s because it was filtered out by the specified --domain-filter", name)
 				return true
 			}
@@ -174,8 +174,9 @@ func (p *AzureProvider) zones(ctx context.Context) ([]dns.Zone, error) {
 
 		if zone.Name != nil && p.domainFilter.Match(*zone.Name) && p.zoneIDFilter.Match(*zone.ID) {
 			zones = append(zones, zone)
-		} else if zone.Name != nil && len(p.zoneNameFilter.Filters) > 0 && p.zoneNameFilter.Match(*zone.Name) {
-			// Handle zoneNameFilter
+		} else if zone.Name != nil && p.zoneNameFilter.IsConfigured() && p.zoneNameFilter.Match(*zone.Name) {
+			zones = append(zones, zone)
+		} else if zone.Name != nil && len(p.domainFilter.Filters) > 0 && p.domainFilter.Match(*zone.Name) {
 			zones = append(zones, zone)
 		}
 
