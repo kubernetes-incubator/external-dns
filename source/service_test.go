@@ -1988,6 +1988,32 @@ func TestNodePortServices(t *testing.T) {
 			[]int{},
 			[]v1.PodPhase{},
 		},
+		{
+			"annotated NodePort services with an AWS Load Balancer annotation return an endpoint with the address from the status.loadBalancer.ingress",
+			"",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeNodePort,
+			"",
+			"",
+			"",
+			false,
+			map[string]string{},
+			map[string]string{
+				hostnameAnnotationKey:         "foo.example.org.",
+				awsLoadBalancerTypeAnnotation: "nlb-ip",
+			},
+			[]string{"some-load-balancer.elb.us-east-1-amazonaws.com"},
+			[]*endpoint.Endpoint{
+				{DNSName: "foo.example.org", Targets: endpoint.Targets{"some-load-balancer.elb.us-east-1-amazonaws.com"}, RecordType: endpoint.RecordTypeCNAME},
+			},
+			false,
+			nil,
+			[]string{},
+			[]int{},
+			[]v1.PodPhase{},
+		},
 	} {
 		t.Run(tc.title, func(t *testing.T) {
 			// Create a Kubernetes testing client
@@ -2022,7 +2048,14 @@ func TestNodePortServices(t *testing.T) {
 				_, err := kubernetes.CoreV1().Pods(tc.svcNamespace).Create(context.Background(), pod, metav1.CreateOptions{})
 				require.NoError(t, err)
 			}
-
+			ingresses := []v1.LoadBalancerIngress{}
+			for _, lb := range tc.lbs {
+				if net.ParseIP(lb) != nil {
+					ingresses = append(ingresses, v1.LoadBalancerIngress{IP: lb})
+				} else {
+					ingresses = append(ingresses, v1.LoadBalancerIngress{Hostname: lb})
+				}
+			}
 			// Create a service to test against
 			service := &v1.Service{
 				Spec: v1.ServiceSpec{
@@ -2039,6 +2072,11 @@ func TestNodePortServices(t *testing.T) {
 					Name:        tc.svcName,
 					Labels:      tc.labels,
 					Annotations: tc.annotations,
+				},
+				Status: v1.ServiceStatus{
+					LoadBalancer: v1.LoadBalancerStatus{
+						Ingress: ingresses,
+					},
 				},
 			}
 
@@ -2699,7 +2737,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				require.NoError(t, err)
 
 				address := v1.EndpointAddress{
-					IP: "4.3.2.1",
+					IP:        "4.3.2.1",
 					TargetRef: tc.targetRefs[i],
 				}
 				if tc.podsReady[i] {

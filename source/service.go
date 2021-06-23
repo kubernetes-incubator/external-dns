@@ -39,7 +39,8 @@ import (
 )
 
 const (
-	defaultTargetsCapacity = 10
+	defaultTargetsCapacity        = 10
+	awsLoadBalancerTypeAnnotation = "service.beta.kubernetes.io/aws-load-balancer-type"
 )
 
 // serviceSource is an implementation of Source for Kubernetes service objects.
@@ -481,13 +482,18 @@ func (sc *serviceSource) generateEndpoints(svc *v1.Service, hostname string, pro
 			endpoints = append(endpoints, sc.extractHeadlessEndpoints(svc, hostname, ttl)...)
 		}
 	case v1.ServiceTypeNodePort:
-		// add the nodeTargets and extract an SRV endpoint
-		targets, err = sc.extractNodePortTargets(svc)
-		if err != nil {
-			log.Errorf("Unable to extract targets from service %s/%s error: %v", svc.Namespace, svc.Name, err)
-			return endpoints
+		// Is the service associated with aws load balancer controller v2?
+		if _, ok := svc.ObjectMeta.Annotations[awsLoadBalancerTypeAnnotation]; ok {
+			targets = append(targets, extractLoadBalancerTargets(svc)...)
+		} else {
+			// add the nodeTargets and extract an SRV endpoint
+			targets, err = sc.extractNodePortTargets(svc)
+			if err != nil {
+				log.Errorf("Unable to extract targets from service %s/%s error: %v", svc.Namespace, svc.Name, err)
+				return endpoints
+			}
+			endpoints = append(endpoints, sc.extractNodePortEndpoints(svc, targets, hostname, ttl)...)
 		}
-		endpoints = append(endpoints, sc.extractNodePortEndpoints(svc, targets, hostname, ttl)...)
 	case v1.ServiceTypeExternalName:
 		targets = append(targets, extractServiceExternalName(svc)...)
 	}
