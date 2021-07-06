@@ -156,7 +156,10 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 		r.Labels[endpoint.OwnerLabelKey] = im.ownerID
 		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
-		filteredChanges.Create = append(filteredChanges.Create, txt)
+		txtNew := endpoint.NewEndpoint(im.mapper.toNewTXTName(r.DNSName, r.RecordType), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txtNew.ProviderSpecific = r.ProviderSpecific
+
+		filteredChanges.Create = append(filteredChanges.Create, txt, txtNew)
 
 		if im.cacheInterval > 0 {
 			im.addToCache(r)
@@ -166,10 +169,12 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 	for _, r := range filteredChanges.Delete {
 		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
+		txtNew := endpoint.NewEndpoint(im.mapper.toNewTXTName(r.DNSName, r.RecordType), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txtNew.ProviderSpecific = r.ProviderSpecific
 
 		// when we delete TXT records for which value has changed (due to new label) this would still work because
 		// !!! TXT record value is uniquely generated from the Labels of the endpoint. Hence old TXT record can be uniquely reconstructed
-		filteredChanges.Delete = append(filteredChanges.Delete, txt)
+		filteredChanges.Delete = append(filteredChanges.Delete, txt, txtNew)
 
 		if im.cacheInterval > 0 {
 			im.removeFromCache(r)
@@ -180,9 +185,11 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 	for _, r := range filteredChanges.UpdateOld {
 		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
+		txtNew := endpoint.NewEndpoint(im.mapper.toNewTXTName(r.DNSName, r.RecordType), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txtNew.ProviderSpecific = r.ProviderSpecific
 		// when we updateOld TXT records for which value has changed (due to new label) this would still work because
 		// !!! TXT record value is uniquely generated from the Labels of the endpoint. Hence old TXT record can be uniquely reconstructed
-		filteredChanges.UpdateOld = append(filteredChanges.UpdateOld, txt)
+		filteredChanges.UpdateOld = append(filteredChanges.UpdateOld, txt, txtNew)
 		// remove old version of record from cache
 		if im.cacheInterval > 0 {
 			im.removeFromCache(r)
@@ -193,7 +200,9 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 	for _, r := range filteredChanges.UpdateNew {
 		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
-		filteredChanges.UpdateNew = append(filteredChanges.UpdateNew, txt)
+		txtNew := endpoint.NewEndpoint(im.mapper.toNewTXTName(r.DNSName, r.RecordType), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txtNew.ProviderSpecific = r.ProviderSpecific
+		filteredChanges.UpdateNew = append(filteredChanges.UpdateNew, txt, txtNew)
 		// add new version of record to cache
 		if im.cacheInterval > 0 {
 			im.addToCache(r)
@@ -229,6 +238,7 @@ func (im *TXTRegistry) AdjustEndpoints(endpoints []*endpoint.Endpoint) []*endpoi
 type nameMapper interface {
 	toEndpointName(string) string
 	toTXTName(string) string
+	toNewTXTName(string, string) string
 }
 
 type affixNameMapper struct {
@@ -243,8 +253,17 @@ func newaffixNameMapper(prefix string, suffix string, wildcardReplacement string
 	return affixNameMapper{prefix: strings.ToLower(prefix), suffix: strings.ToLower(suffix), wildcardReplacement: strings.ToLower(wildcardReplacement)}
 }
 
+func dropRecordType(name string) string {
+	nameS := strings.Split(name, "-")
+	switch nameS[0] {
+	case "cname", "txt", "ns", "a":
+		return strings.TrimPrefix(name, nameS[0]+"-")
+	default:
+		return name
+	}
+}
 func (pr affixNameMapper) toEndpointName(txtDNSName string) string {
-	lowerDNSName := strings.ToLower(txtDNSName)
+	lowerDNSName := dropRecordType(strings.ToLower(txtDNSName))
 	if strings.HasPrefix(lowerDNSName, pr.prefix) && len(pr.suffix) == 0 {
 		return strings.TrimPrefix(lowerDNSName, pr.prefix)
 	}
@@ -270,6 +289,21 @@ func (pr affixNameMapper) toTXTName(endpointDNSName string) string {
 		return pr.prefix + DNSName[0] + pr.suffix
 	}
 	return pr.prefix + DNSName[0] + pr.suffix + "." + DNSName[1]
+}
+
+func (pr affixNameMapper) toNewTXTName(endpointDNSName, recordType string) string {
+	DNSName := strings.SplitN(endpointDNSName, ".", 2)
+	recordT := strings.ToLower(recordType + "-")
+
+	// If specified, replace a leading asterisk in the generated txt record name with some other string
+	if pr.wildcardReplacement != "" && DNSName[0] == "*" {
+		DNSName[0] = pr.wildcardReplacement
+	}
+
+	if len(DNSName) < 2 {
+		return recordT + pr.prefix + DNSName[0] + pr.suffix
+	}
+	return recordT + pr.prefix + DNSName[0] + pr.suffix + "." + DNSName[1]
 }
 
 func (im *TXTRegistry) addToCache(ep *endpoint.Endpoint) {
