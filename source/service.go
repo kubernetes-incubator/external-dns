@@ -309,15 +309,29 @@ func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname stri
 			}
 
 			for _, headlessDomain := range headlessDomains {
-				var ep string
+				var ep []string
 				if sc.publishHostIP {
-					ep = pod.Status.HostIP
-					log.Debugf("Generating matching endpoint %s with HostIP %s", headlessDomain, ep)
+					internalIPs := []string{pod.Status.HostIP}
+					var externalIPs endpoint.Targets
+
+					node, err := sc.nodeInformer.Lister().Get(pod.Spec.NodeName)
+					if err != nil {
+						log.Errorf("Node %s not found", pod.Spec.NodeName)
+						return nil
+					}
+					for _, address := range node.Status.Addresses {
+						if address.Type == v1.NodeExternalIP {
+							externalIPs = append(externalIPs, address.Address)
+						}
+					}
+
+					access := getAccessFromAnnotations(svc.Annotations)
+					ep = append(ep, endpointsByAccessType(access, externalIPs, internalIPs)...)
 				} else {
-					ep = address.IP
+					ep = append(ep, address.IP)
 					log.Debugf("Generating matching endpoint %s with EndpointAddress IP %s", headlessDomain, ep)
 				}
-				targetsByHeadlessDomain[headlessDomain] = append(targetsByHeadlessDomain[headlessDomain], ep)
+				targetsByHeadlessDomain[headlessDomain] = append(targetsByHeadlessDomain[headlessDomain], ep...)
 			}
 		}
 	}
@@ -614,16 +628,20 @@ func (sc *serviceSource) extractNodePortTargets(svc *v1.Service) (endpoint.Targe
 	}
 
 	access := getAccessFromAnnotations(svc.Annotations)
+	return endpointsByAccessType(access, externalIPs, internalIPs), nil
+}
+
+func endpointsByAccessType(access string, externalIPs endpoint.Targets, internalIPs endpoint.Targets) endpoint.Targets {
 	if access == "public" {
-		return externalIPs, nil
+		return externalIPs
 	}
 	if access == "private" {
-		return internalIPs, nil
+		return internalIPs
 	}
 	if len(externalIPs) > 0 {
-		return externalIPs, nil
+		return externalIPs
 	}
-	return internalIPs, nil
+	return internalIPs
 }
 
 func (sc *serviceSource) extractNodePortEndpoints(svc *v1.Service, nodeTargets endpoint.Targets, hostname string, ttl endpoint.TTL) []*endpoint.Endpoint {
