@@ -29,7 +29,10 @@ var (
 )
 
 const (
-	heritage = "external-dns"
+	// heritageKey is the name of the heritage label.
+	heritageKey = "heritage"
+	// controllerKey is the name of the controller managing labels.
+	controllerName = "external-dns"
 	// OwnerLabelKey is the name of the label that defines the owner of an Endpoint.
 	OwnerLabelKey = "owner"
 	// ResourceLabelKey is the name of the label that identifies k8s resource which wants to acquire the DNS name
@@ -52,29 +55,33 @@ func NewLabels() Labels {
 	return map[string]string{}
 }
 
-// NewLabelsFromString constructs endpoints labels from a provided format string
-// if heritage set to another value is found then error is returned
-// no heritage automatically assumes is not owned by external-dns and returns invalidHeritage error
+// NewLabelsFromString constructs endpoints labels from a provided format string.
+// If the heritageKey is set to a value other than controllerName, an error is returned.
+// If no heritageKey value is found, the endpoint is presumably not owned by external-dns,
+// so an invalidHeritage error is returned.
 func NewLabelsFromString(labelText string) (Labels, error) {
 	endpointLabels := map[string]string{}
 	labelText = strings.Trim(labelText, "\"") // drop quotes
 	tokens := strings.Split(labelText, ",")
 	foundExternalDNSHeritage := false
 	for _, token := range tokens {
-		if len(strings.Split(token, "=")) != 2 {
+		keyValuePair := strings.Split(token, "=")
+		if len(keyValuePair) != 2 {
 			continue
 		}
-		key := strings.Split(token, "=")[0]
-		val := strings.Split(token, "=")[1]
-		if key == "heritage" && val != heritage {
-			return nil, ErrInvalidHeritage
-		}
-		if key == "heritage" {
+		key := keyValuePair[0]
+		val := keyValuePair[1]
+
+		if key == heritageKey {
+			if val != controllerName {
+				return nil, ErrInvalidHeritage
+			}
 			foundExternalDNSHeritage = true
 			continue
 		}
-		if strings.HasPrefix(key, heritage) {
-			endpointLabels[strings.TrimPrefix(key, heritage+"/")] = val
+
+		if strings.HasPrefix(key, controllerName) {
+			endpointLabels[strings.TrimPrefix(key, controllerName+"/")] = val
 		}
 	}
 
@@ -89,7 +96,7 @@ func NewLabelsFromString(labelText string) (Labels, error) {
 // withQuotes adds additional quotes
 func (l Labels) Serialize(withQuotes bool) string {
 	var tokens []string
-	tokens = append(tokens, fmt.Sprintf("heritage=%s", heritage))
+	tokens = append(tokens, fmt.Sprintf("heritage=%s", controllerName))
 	var keys []string
 	for key := range l {
 		keys = append(keys, key)
@@ -97,7 +104,7 @@ func (l Labels) Serialize(withQuotes bool) string {
 	sort.Strings(keys) // sort for consistency
 
 	for _, key := range keys {
-		tokens = append(tokens, fmt.Sprintf("%s/%s=%s", heritage, key, l[key]))
+		tokens = append(tokens, fmt.Sprintf("%s/%s=%s", controllerName, key, l[key]))
 	}
 	if withQuotes {
 		return fmt.Sprintf("\"%s\"", strings.Join(tokens, ","))
