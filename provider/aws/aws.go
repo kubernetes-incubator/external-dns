@@ -156,6 +156,8 @@ type AWSProvider struct {
 	zoneTagFilter provider.ZoneTagFilter
 	preferCNAME   bool
 	zonesCache    *zonesListCache
+	// queue for collecting changes to submit them in the next iteration, but after all other changes
+	failedChangesQueue map[string][]*route53.Change
 }
 
 // AWSConfig contains configuration to create a new AWS provider.
@@ -212,6 +214,7 @@ func NewAWSProvider(awsConfig AWSConfig) (*AWSProvider, error) {
 		preferCNAME:          awsConfig.PreferCNAME,
 		dryRun:               awsConfig.DryRun,
 		zonesCache:           &zonesListCache{duration: awsConfig.ZoneCacheDuration},
+		failedChangesQueue:   make(map[string][]*route53.Change),
 	}
 
 	return provider, nil
@@ -333,7 +336,7 @@ func (p *AWSProvider) records(ctx context.Context, zones map[string]*route53.Hos
 				newEndpoints = append(newEndpoints, endpoint.NewEndpointWithTTL(wildcardUnescape(aws.StringValue(r.Name)), aws.StringValue(r.Type), ttl, targets...))
 			}
 
-			if r.AliasTarget != nil {
+			if r.AliasTarget != nil && aws.StringValue(r.AliasTarget.HostedZoneId) != endpoint.OwnedRecordLabelKey { // see HACK in `newChanges`
 				// Alias records don't have TTLs so provide the default to match the TXT generation
 				if ttl == 0 {
 					ttl = recordTTL
@@ -524,9 +527,30 @@ func (p *AWSProvider) submitChanges(ctx context.Context, changes []*route53.Chan
 	for z, cs := range changesByZone {
 		var failedUpdate bool
 
-		batchCs := batchChangeSet(cs, p.batchChangeSize)
+		// group changes into new changes and into changes that failed in a previous iteration and are retried
+		var newChanges, retriedChanges []*route53.Change
+		for _, c := range cs {
+			found := false
+			if p.failedChangesQueue[z] != nil {
+				for _, failedChange := range p.failedChangesQueue[z] {
+					if c == failedChange {
+						retriedChanges = append(retriedChanges, c)
+						found = true
+					}
+				}
+				p.failedChangesQueue[z] = nil // clear the queue
+			}
+			if !found {
+				newChanges = append(newChanges, c)
+			}
+		}
+		batchCs := append(batchChangeSet(newChanges, p.batchChangeSize), batchChangeSet(retriedChanges, p.batchChangeSize)...)
 
 		for i, b := range batchCs {
+			if len(b) == 0 {
+				continue
+			}
+
 			for _, c := range b {
 				log.Infof("Desired change: %s %s %s [Id: %s]", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, z)
 			}
@@ -535,17 +559,49 @@ func (p *AWSProvider) submitChanges(ctx context.Context, changes []*route53.Chan
 				params := &route53.ChangeResourceRecordSetsInput{
 					HostedZoneId: aws.String(z),
 					ChangeBatch: &route53.ChangeBatch{
-						Changes: b,
+						Changes: ownedRecordRemoved(b),
 					},
 				}
 
+				successfulChanges := 0
+
 				if _, err := p.client.ChangeResourceRecordSetsWithContext(ctx, params); err != nil {
-					log.Errorf("Failure in zone %s [Id: %s]", aws.StringValue(zones[z].Name), z)
-					log.Error(err) //TODO(ideahitme): consider changing the interface in cases when this error might be a concern for other components
-					failedUpdate = true
+					log.Errorf("Failure in zone %s [Id: %s] when submitting change batch: %v", aws.StringValue(zones[z].Name), z, err)
+
+					changesByOwnership := groupChangesByNameAndOwnership(b)
+
+					if len(changesByOwnership) > 1 {
+						log.Debug("Trying to submit change sets one-by-one instead")
+
+						for _, changes := range changesByOwnership {
+							for _, c := range changes {
+								log.Debugf("Desired change: %s %s %s [Id: %s]", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, z)
+							}
+							params.ChangeBatch = &route53.ChangeBatch{
+								Changes: ownedRecordRemoved(changes),
+							}
+							if _, err := p.client.ChangeResourceRecordSetsWithContext(ctx, params); err != nil {
+								failedUpdate = true
+								log.Error("Failed submitting change, it will be retried in a separate change batch in the next iteration")
+								if _, ok := p.failedChangesQueue[z]; !ok {
+									p.failedChangesQueue[z] = changes
+								} else {
+									p.failedChangesQueue[z] = append(p.failedChangesQueue[z], changes...)
+								}
+							} else {
+								successfulChanges = successfulChanges + len(changes)
+							}
+						}
+					} else {
+						failedUpdate = true
+					}
 				} else {
+					successfulChanges = len(b)
+				}
+
+				if successfulChanges > 0 {
 					// z is the R53 Hosted Zone ID already as aws.StringValue
-					log.Infof("%d record(s) in zone %s [Id: %s] were successfully updated", len(b), aws.StringValue(zones[z].Name), z)
+					log.Infof("%d record(s) in zone %s [Id: %s] were successfully updated", successfulChanges, aws.StringValue(zones[z].Name), z)
 				}
 
 				if i != len(batchCs)-1 {
@@ -702,7 +758,63 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint, recordsCac
 		change.ResourceRecordSet.HealthCheckId = aws.String(prop.Value)
 	}
 
+	setOwnedRecord(change, ep)
+
 	return change, dualstack
+}
+
+// HACK: we have no easy way of passing the "ownedRecord" label of endpoints to `submitChanges` for grouping
+// transactions by owner relationship; we cheat here by passing the label as the `AliasTarget` of the record;
+// the `AliasTarget` setting is recognized and removed in `submitChanges` before submission of the change to Route53;
+// the "ownedRecord" label should only ever appear on TXT endpoints created by the TXT registry, so it should not
+// interfere with any other record that could possibly have an actual `AliasTarget` setting
+func setOwnedRecord(change *route53.Change, ep *endpoint.Endpoint) {
+	if ownedRecord, ok := ep.Labels[endpoint.OwnedRecordLabelKey]; ok && change.ResourceRecordSet.AliasTarget == nil {
+		change.ResourceRecordSet.AliasTarget = &route53.AliasTarget{
+			HostedZoneId: aws.String(endpoint.OwnedRecordLabelKey),
+			DNSName:      aws.String(ownedRecord),
+		}
+	}
+}
+
+// returns the value of the ownedRecord label of the original endpoint (encoded in the AliasTarget of the change)
+func getOwnedRecord(change *route53.Change) string {
+	if aws.StringValue(change.ResourceRecordSet.Type) == "TXT" && change.ResourceRecordSet.AliasTarget != nil && aws.StringValue(change.ResourceRecordSet.AliasTarget.HostedZoneId) == endpoint.OwnedRecordLabelKey {
+		return aws.StringValue(change.ResourceRecordSet.AliasTarget.DNSName)
+	}
+	return ""
+}
+
+// returns a copy of the given changes with the ownedRecord encoding via AliasTarget removed;
+// this should be used directly before passing the change set to Route53
+func ownedRecordRemoved(changes []*route53.Change) []*route53.Change {
+	ret := []*route53.Change{}
+	for _, change := range changes {
+		recordSetCopy := *change.ResourceRecordSet
+		if getOwnedRecord(change) != "" {
+			recordSetCopy.AliasTarget = nil
+		}
+		ret = append(ret, &route53.Change{
+			Action:            change.Action,
+			ResourceRecordSet: &recordSetCopy,
+		})
+	}
+	return ret
+}
+
+// group the given changes by name and ownership relation to ensure these are always submitted in the same transaction to Route53;
+// grouping by name is done to always submit changes with the same name but different set identifier together,
+// grouping by ownership relation is done to always submit changes of records and e.g. their corresponding TXT registry records in together
+func groupChangesByNameAndOwnership(cs []*route53.Change) map[string][]*route53.Change {
+	changesByOwnership := make(map[string][]*route53.Change)
+	for _, v := range cs {
+		key := getOwnedRecord(v)
+		if key == "" {
+			key = aws.StringValue(v.ResourceRecordSet.Name)
+		}
+		changesByOwnership[key] = append(changesByOwnership[key], v)
+	}
+	return changesByOwnership
 }
 
 func (p *AWSProvider) tagsForZone(ctx context.Context, zoneID string) (map[string]string, error) {
@@ -728,41 +840,34 @@ func batchChangeSet(cs []*route53.Change, batchSize int) [][]*route53.Change {
 
 	batchChanges := make([][]*route53.Change, 0)
 
-	changesByName := make(map[string][]*route53.Change)
-	for _, v := range cs {
-		changesByName[*v.ResourceRecordSet.Name] = append(changesByName[*v.ResourceRecordSet.Name], v)
-	}
+	changesByOwnership := groupChangesByNameAndOwnership(cs)
 
 	names := make([]string, 0)
-	for v := range changesByName {
+	for v := range changesByOwnership {
 		names = append(names, v)
 	}
 	sort.Strings(names)
 
-	for _, name := range names {
-		totalChangesByName := len(changesByName[name])
-
-		if totalChangesByName > batchSize {
-			log.Warnf("Total changes for %s exceeds max batch size of %d, total changes: %d", name,
-				batchSize, totalChangesByName)
+	currentBatch := []*route53.Change{}
+	for k, name := range names {
+		v := changesByOwnership[name]
+		if len(v) > batchSize {
+			log.Warnf("Total changes for %v exceeds max batch size of %d, total changes: %d; changes will not be performed", k, batchSize, len(v))
 			continue
 		}
 
-		var existingBatch bool
-		for i, b := range batchChanges {
-			if len(b)+totalChangesByName <= batchSize {
-				batchChanges[i] = append(batchChanges[i], changesByName[name]...)
-				existingBatch = true
-				break
-			}
-		}
-		if !existingBatch {
-			batchChanges = append(batchChanges, changesByName[name])
+		if len(currentBatch)+len(v) > batchSize {
+			// currentBatch would be too large if we add this changeset;
+			// add currentBatch to batchChanges and start a new currentBatch
+			batchChanges = append(batchChanges, sortChangesByActionNameType(currentBatch))
+			currentBatch = append([]*route53.Change{}, v...)
+		} else {
+			currentBatch = append(currentBatch, v...)
 		}
 	}
-
-	for i, batch := range batchChanges {
-		batchChanges[i] = sortChangesByActionNameType(batch)
+	if len(currentBatch) > 0 {
+		// add final currentBatch
+		batchChanges = append(batchChanges, sortChangesByActionNameType(currentBatch))
 	}
 
 	return batchChanges
