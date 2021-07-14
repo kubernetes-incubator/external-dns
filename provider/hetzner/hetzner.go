@@ -16,6 +16,7 @@ package hetzner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -162,7 +163,7 @@ func (p *HetznerProvider) submitChanges(ctx context.Context, changes []*HetznerC
 					TTL:        change.ResourceRecordSet.TTL,
 				}
 				answer, err := p.Client.CreateRecord(record)
-				if err != nil {
+				if err != nil || answer.Error.Code != 0 {
 					log.WithFields(log.Fields{
 						"Code":         answer.Error.Code,
 						"Message":      answer.Error.Message,
@@ -170,16 +171,22 @@ func (p *HetznerProvider) submitChanges(ctx context.Context, changes []*HetznerC
 						"Record type":  answer.Record.RecordType,
 						"Record value": answer.Record.Value,
 					}).Warning("Create problem")
-					return err
+					if err != nil {
+						return err
+					}
+					return fmt.Errorf("could not create record %s (%d)", change.ResourceRecordSet.Name, answer.Error.Code)
 				}
 			case hetznerDelete:
 				answer, err := p.Client.DeleteRecord(change.ResourceRecordSet.ID)
-				if err != nil {
+				if err != nil || answer.Error.Code != 0 {
 					log.WithFields(log.Fields{
 						"Code":    answer.Error.Code,
 						"Message": answer.Error.Message,
 					}).Warning("Delete problem")
-					return err
+					if err != nil {
+						return err
+					}
+					return fmt.Errorf("could not delete record %s (%d)", change.ResourceRecordSet.ID, answer.Error.Code)
 				}
 			case hetznerUpdate:
 				record := hclouddns.HCloudRecord{
@@ -191,7 +198,7 @@ func (p *HetznerProvider) submitChanges(ctx context.Context, changes []*HetznerC
 					ID:         change.ResourceRecordSet.ID,
 				}
 				answer, err := p.Client.UpdateRecord(record)
-				if err != nil {
+				if err != nil || answer.Error.Code != 0 {
 					log.WithFields(log.Fields{
 						"Code":         answer.Error.Code,
 						"Message":      answer.Error.Message,
@@ -199,7 +206,10 @@ func (p *HetznerProvider) submitChanges(ctx context.Context, changes []*HetznerC
 						"Record type":  answer.Record.RecordType,
 						"Record value": answer.Record.Value,
 					}).Warning("Update problem")
-					return err
+					if err != nil {
+						return err
+					}
+					return fmt.Errorf("could not update record %s (%d)", change.ResourceRecordSet.Name, answer.Error.Code)
 				}
 			}
 		}
