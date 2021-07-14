@@ -53,6 +53,8 @@ const (
 	controllerAnnotationValue = "dns-controller"
 	// The annotation used for defining the desired hostname
 	internalHostnameAnnotationKey = "external-dns.alpha.kubernetes.io/internal-hostname"
+	// Suffix .nip.io of <IP>.nip.io names that we resolve to <IP> locally
+	nipIoSuffix = ".nip.io"
 )
 
 // Provider-specific annotations
@@ -192,7 +194,20 @@ func suitableType(target string) string {
 	if net.ParseIP(target) != nil {
 		return endpoint.RecordTypeA
 	}
+	if parseNipIoIP(target) != "" {
+		return endpoint.RecordTypeA
+	}
 	return endpoint.RecordTypeCNAME
+}
+
+func parseNipIoIP(target string) string {
+	if strings.HasSuffix(target, nipIoSuffix) {
+		ip := target[0:(len(target) - len(nipIoSuffix))]
+		if net.ParseIP(ip) != nil {
+			return ip
+		}
+	}
+	return ""
 }
 
 // endpointsForHostname returns the endpoint objects for each host-target combination.
@@ -205,7 +220,12 @@ func endpointsForHostname(hostname string, targets endpoint.Targets, ttl endpoin
 	for _, t := range targets {
 		switch suitableType(t) {
 		case endpoint.RecordTypeA:
-			aTargets = append(aTargets, t)
+			realIP := parseNipIoIP(t)
+			if realIP != "" {
+				aTargets = append(aTargets, realIP)
+			} else {
+				aTargets = append(aTargets, t)
+			}
 		default:
 			cnameTargets = append(cnameTargets, t)
 		}
