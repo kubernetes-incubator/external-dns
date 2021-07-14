@@ -240,6 +240,19 @@ func TestAWSSDProvider_Records(t *testing.T) {
 					}},
 				},
 			},
+			"owners-srv": {
+				Id:          aws.String("owners-srv"),
+				Name:        aws.String("service4"),
+				Description: aws.String("owner-id"),
+				DnsConfig: &sd.DnsConfig{
+					NamespaceId:   aws.String("private"),
+					RoutingPolicy: aws.String(sd.RoutingPolicyWeighted),
+					DnsRecords: []*sd.DnsRecord{{
+						Type: aws.String(sd.RecordTypeA),
+						TTL:  aws.Int64(100),
+					}},
+				},
+			},
 		},
 	}
 
@@ -249,12 +262,14 @@ func TestAWSSDProvider_Records(t *testing.T) {
 				Id: aws.String("1.2.3.4"),
 				Attributes: map[string]*string{
 					sdInstanceAttrIPV4: aws.String("1.2.3.4"),
+					endpoint.OwnerLabelKey: aws.String("owner-id"),
 				},
 			},
 			"1.2.3.5": {
 				Id: aws.String("1.2.3.5"),
 				Attributes: map[string]*string{
 					sdInstanceAttrIPV4: aws.String("1.2.3.5"),
+					endpoint.OwnerLabelKey: aws.String("owner-id"),
 				},
 			},
 		},
@@ -263,6 +278,7 @@ func TestAWSSDProvider_Records(t *testing.T) {
 				Id: aws.String("load-balancer.us-east-1.elb.amazonaws.com"),
 				Attributes: map[string]*string{
 					sdInstanceAttrAlias: aws.String("load-balancer.us-east-1.elb.amazonaws.com"),
+					endpoint.OwnerLabelKey: aws.String("owner-id"),
 				},
 			},
 		},
@@ -271,6 +287,37 @@ func TestAWSSDProvider_Records(t *testing.T) {
 				Id: aws.String("cname.target.com"),
 				Attributes: map[string]*string{
 					sdInstanceAttrCname: aws.String("cname.target.com"),
+					endpoint.OwnerLabelKey: aws.String("owner-id"),
+				},
+			},
+		},
+		"owners-srv": {
+			"1.2.3.4": {
+				Id: aws.String("1.2.3.4"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4: aws.String("1.2.3.4"),
+					endpoint.OwnerLabelKey: aws.String("owner-id"),
+				},
+			},
+			"1.2.3.5": {
+				Id: aws.String("1.2.3.5"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4: aws.String("1.2.3.5"),
+					endpoint.OwnerLabelKey: aws.String("owner-id"),
+				},
+			},
+			"1.2.3.0": {
+				Id: aws.String("1.2.3.0"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4: aws.String("1.2.3.0"),
+					endpoint.OwnerLabelKey: aws.String("some-other-owner-id"),
+				},
+			},
+			"1.2.3.1": {
+				Id: aws.String("1.2.3.0"),
+				Attributes: map[string]*string{
+					sdInstanceAttrIPV4: aws.String("1.2.3.0"),
+					// no owner id
 				},
 			},
 		},
@@ -280,6 +327,7 @@ func TestAWSSDProvider_Records(t *testing.T) {
 		{DNSName: "service1.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5"}, RecordType: endpoint.RecordTypeA, RecordTTL: 100, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
 		{DNSName: "service2.private.com", Targets: endpoint.Targets{"load-balancer.us-east-1.elb.amazonaws.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 100, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
 		{DNSName: "service3.private.com", Targets: endpoint.Targets{"cname.target.com"}, RecordType: endpoint.RecordTypeCNAME, RecordTTL: 80, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
+		{DNSName: "service4.private.com", Targets: endpoint.Targets{"1.2.3.4", "1.2.3.5"}, RecordType: endpoint.RecordTypeA, RecordTTL: 100, Labels: map[string]string{endpoint.AWSSDDescriptionLabel: "owner-id"}},
 	}
 
 	api := &AWSSDClientStub{
@@ -713,17 +761,22 @@ func TestAWSSDProvider_RegisterInstance(t *testing.T) {
 		DNSName:    "service1.private.com.",
 		RecordTTL:  300,
 		Targets:    endpoint.Targets{"1.2.3.4", "1.2.3.5"},
+		Labels:     endpoint.Labels{
+			endpoint.AWSSDDescriptionLabel: "service1",
+		},
 	})
 	expectedInstances["1.2.3.4"] = &sd.Instance{
 		Id: aws.String("1.2.3.4"),
 		Attributes: map[string]*string{
 			sdInstanceAttrIPV4: aws.String("1.2.3.4"),
+			endpoint.OwnerLabelKey: aws.String("service1"),
 		},
 	}
 	expectedInstances["1.2.3.5"] = &sd.Instance{
 		Id: aws.String("1.2.3.5"),
 		Attributes: map[string]*string{
 			sdInstanceAttrIPV4: aws.String("1.2.3.5"),
+			endpoint.OwnerLabelKey: aws.String("service1"),
 		},
 	}
 
@@ -733,17 +786,22 @@ func TestAWSSDProvider_RegisterInstance(t *testing.T) {
 		DNSName:    "service1.private.com.",
 		RecordTTL:  300,
 		Targets:    endpoint.Targets{"load-balancer.us-east-1.elb.amazonaws.com", "load-balancer.us-west-2.elb.amazonaws.com"},
+		Labels:     endpoint.Labels{
+			endpoint.AWSSDDescriptionLabel: "service1",
+		},
 	})
 	expectedInstances["load-balancer.us-east-1.elb.amazonaws.com"] = &sd.Instance{
 		Id: aws.String("load-balancer.us-east-1.elb.amazonaws.com"),
 		Attributes: map[string]*string{
 			sdInstanceAttrAlias: aws.String("load-balancer.us-east-1.elb.amazonaws.com"),
+			endpoint.OwnerLabelKey: aws.String("service1"),
 		},
 	}
 	expectedInstances["load-balancer.us-west-2.elb.amazonaws.com"] = &sd.Instance{
 		Id: aws.String("load-balancer.us-west-2.elb.amazonaws.com"),
 		Attributes: map[string]*string{
 			sdInstanceAttrAlias: aws.String("load-balancer.us-west-2.elb.amazonaws.com"),
+			endpoint.OwnerLabelKey: aws.String("service1"),
 		},
 	}
 
@@ -753,11 +811,15 @@ func TestAWSSDProvider_RegisterInstance(t *testing.T) {
 		DNSName:    "service1.private.com.",
 		RecordTTL:  300,
 		Targets:    endpoint.Targets{"load-balancer.elb.us-west-2.amazonaws.com"},
+		Labels:     endpoint.Labels{
+			endpoint.AWSSDDescriptionLabel: "service1",
+		},
 	})
 	expectedInstances["load-balancer.elb.us-west-2.amazonaws.com"] = &sd.Instance{
 		Id: aws.String("load-balancer.elb.us-west-2.amazonaws.com"),
 		Attributes: map[string]*string{
 			sdInstanceAttrAlias: aws.String("load-balancer.elb.us-west-2.amazonaws.com"),
+			endpoint.OwnerLabelKey: aws.String("service1"),
 		},
 	}
 
@@ -767,11 +829,15 @@ func TestAWSSDProvider_RegisterInstance(t *testing.T) {
 		DNSName:    "service2.private.com.",
 		RecordTTL:  300,
 		Targets:    endpoint.Targets{"cname.target.com"},
+		Labels:     endpoint.Labels{
+			endpoint.AWSSDDescriptionLabel: "service2",
+		},
 	})
 	expectedInstances["cname.target.com"] = &sd.Instance{
 		Id: aws.String("cname.target.com"),
 		Attributes: map[string]*string{
 			sdInstanceAttrCname: aws.String("cname.target.com"),
+			endpoint.OwnerLabelKey: aws.String("service2"),
 		},
 	}
 

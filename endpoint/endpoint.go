@@ -138,6 +138,9 @@ type Endpoint struct {
 	// ProviderSpecific stores provider specific config
 	// +optional
 	ProviderSpecific ProviderSpecific `json:"providerSpecific,omitempty"`
+	// TargetLabels stores labels defined for all targets of the Endpoint.
+	// +optional
+	TargetLabels Labels `json:"targetLabels,omitempty"`
 }
 
 // NewEndpoint initialization method to be used to create an endpoint

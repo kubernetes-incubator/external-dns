@@ -183,6 +183,12 @@ func (p *AWSSDProvider) instancesToEndpoint(ns *sd.NamespaceSummary, srv *sd.Ser
 	}
 
 	for _, inst := range instances {
+		// Ignore any instances that don't match our expected owner label.
+		if inst.Attributes[endpoint.OwnerLabelKey] == nil || *inst.Attributes[endpoint.OwnerLabelKey] != *srv.Description {
+			log.Debugf("Skipping instance \"%v\" found in service \"%v\", not under management", *inst.Id, *srv.Name)
+			continue
+		}
+
 		// CNAME
 		if inst.Attributes[sdInstanceAttrCname] != nil && aws.StringValue(srv.DnsConfig.DnsRecords[0].Type) == sd.RecordTypeCname {
 			newEndpoint.RecordType = endpoint.RecordTypeCNAME
@@ -508,6 +514,14 @@ func (p *AWSSDProvider) RegisterInstance(service *sd.Service, ep *endpoint.Endpo
 			attr[sdInstanceAttrIPV4] = aws.String(target)
 		} else {
 			return fmt.Errorf("invalid endpoint type (%v)", ep)
+		}
+
+		// Add the owner label to the instance's attributes.
+		attr[endpoint.OwnerLabelKey] = aws.String(ep.Labels[endpoint.AWSSDDescriptionLabel])
+
+		// Add any additional target labels to the instance's attributes.
+		for key, value := range ep.TargetLabels {
+			attr[key] = aws.String(value)
 		}
 
 		if !p.dryRun {
