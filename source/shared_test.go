@@ -17,10 +17,10 @@ limitations under the License.
 package source
 
 import (
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
-	"reflect"
 
 	"sigs.k8s.io/external-dns/endpoint"
 )
@@ -63,7 +63,7 @@ func validateEndpoint(t *testing.T, endpoint, expected *endpoint.Endpoint) {
 	}
 
 	// if non-empty labels are expected, check that they matches.
-	if expected.Labels != nil && !reflect.DeepEqual(endpoint.Labels,expected.Labels) {
+	if expected.Labels != nil && !reflect.DeepEqual(endpoint.Labels, expected.Labels) {
 		t.Errorf("expected %s, got %s", expected.Labels, endpoint.Labels)
 	}
 }

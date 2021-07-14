@@ -271,8 +271,8 @@ func testEndpointsFromIngressHostnameSourceAnnotation(t *testing.T) {
 		{
 			title: "No ingress-hostname-source annotation, one rule.host",
 			ingress: fakeIngress{
-				dnsnames:    []string{"foo.bar"},
-				hostnames:   []string{"lb.com"},
+				dnsnames:  []string{"foo.bar"},
+				hostnames: []string{"lb.com"},
 			},
 			expected: []*endpoint.Endpoint{
 				{

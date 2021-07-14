@@ -194,6 +194,7 @@ func parseTemplate(fqdnTemplate string) (tmpl *template.Template, err error) {
 	if fqdnTemplate != "" {
 		tmpl, err = template.New("endpoint").Funcs(template.FuncMap{
 			"trimPrefix": strings.TrimPrefix,
+			"trimSuffix": strings.TrimSuffix,
 		}).Parse(fqdnTemplate)
 	}
 	return tmpl, err
