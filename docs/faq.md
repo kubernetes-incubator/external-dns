@@ -2,7 +2,7 @@
 
 ### How is ExternalDNS useful to me?
 
-You've probably created many deployments. Typically, you expose your deployment to the Internet by creating a Service with `type=LoadBalancer`. Depending on your environment, this usually assigns a random publicly available endpoint to your service that you can access from anywhere in the world. On Google Container Engine, this is a public IP address:
+You've probably created many deployments. Typically, you expose your deployment to the Internet by creating a Service with `type=LoadBalancer`. Depending on your environment, this usually assigns a random publicly available endpoint to your service that you can access from anywhere in the world. On Google Kubernetes Engine, this is a public IP address:
 
 ```console
 $ kubectl get svc
@@ -54,7 +54,7 @@ Yes, you can. Pass in a comma separated list to `--fqdn-template`. Beaware this 
 
 ### Which Service and Ingress controllers are supported?
 
-Regarding Services, we'll support the OSI Layer 4 load balancers that Kubernetes creates on AWS and Google Container Engine, and possibly other clusters running on Google Compute Engine.
+Regarding Services, we'll support the OSI Layer 4 load balancers that Kubernetes creates on AWS and Google Kubernetes Engine, and possibly other clusters running on Google Compute Engine.
 
 Regarding Ingress, we'll support:
 * Google's Ingress Controller on GKE that integrates with their Layer 7 load balancers (GLBC)

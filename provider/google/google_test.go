@@ -194,24 +194,46 @@ func hasTrailingDot(target string) bool {
 }
 
 func TestGoogleZonesIDFilter(t *testing.T) {
-	provider := newGoogleProviderZoneOverlap(t, endpoint.NewDomainFilter([]string{"cluster.local."}), provider.NewZoneIDFilter([]string{"10002"}), false, []*endpoint.Endpoint{})
+	provider := newGoogleProviderZoneOverlap(t, endpoint.NewDomainFilter([]string{"cluster.local."}), provider.NewZoneIDFilter([]string{"10002"}), provider.NewZoneTypeFilter(""), false, []*endpoint.Endpoint{})
 
 	zones, err := provider.Zones(context.Background())
 	require.NoError(t, err)
 
 	validateZones(t, zones, map[string]*dns.ManagedZone{
-		"internal-2": {Name: "internal-2", DnsName: "cluster.local.", Id: 10002},
+		"internal-2": {Name: "internal-2", DnsName: "cluster.local.", Id: 10002, Visibility: "private"},
 	})
 }
 
 func TestGoogleZonesNameFilter(t *testing.T) {
-	provider := newGoogleProviderZoneOverlap(t, endpoint.NewDomainFilter([]string{"cluster.local."}), provider.NewZoneIDFilter([]string{"internal-2"}), false, []*endpoint.Endpoint{})
+	provider := newGoogleProviderZoneOverlap(t, endpoint.NewDomainFilter([]string{"cluster.local."}), provider.NewZoneIDFilter([]string{"internal-2"}), provider.NewZoneTypeFilter(""), false, []*endpoint.Endpoint{})
 
 	zones, err := provider.Zones(context.Background())
 	require.NoError(t, err)
 
 	validateZones(t, zones, map[string]*dns.ManagedZone{
-		"internal-2": {Name: "internal-2", DnsName: "cluster.local.", Id: 10002},
+		"internal-2": {Name: "internal-2", DnsName: "cluster.local.", Id: 10002, Visibility: "private"},
+	})
+}
+
+func TestGoogleZonesVisibilityFilterPublic(t *testing.T) {
+	provider := newGoogleProviderZoneOverlap(t, endpoint.NewDomainFilter([]string{"cluster.local."}), provider.NewZoneIDFilter([]string{"split-horizon-1"}), provider.NewZoneTypeFilter("public"), false, []*endpoint.Endpoint{})
+
+	zones, err := provider.Zones(context.Background())
+	require.NoError(t, err)
+
+	validateZones(t, zones, map[string]*dns.ManagedZone{
+		"split-horizon-1": {Name: "split-horizon-1", DnsName: "cluster.local.", Id: 10001, Visibility: "public"},
+	})
+}
+
+func TestGoogleZonesVisibilityFilterPrivate(t *testing.T) {
+	provider := newGoogleProviderZoneOverlap(t, endpoint.NewDomainFilter([]string{"cluster.local."}), provider.NewZoneIDFilter([]string{"split-horizon-1"}), provider.NewZoneTypeFilter("public"), false, []*endpoint.Endpoint{})
+
+	zones, err := provider.Zones(context.Background())
+	require.NoError(t, err)
+
+	validateZones(t, zones, map[string]*dns.ManagedZone{
+		"split-horizon-1": {Name: "split-horizon-1", DnsName: "cluster.local.", Id: 10001, Visibility: "public"},
 	})
 }
 
@@ -650,6 +672,7 @@ func validateZones(t *testing.T, zones map[string]*dns.ManagedZone, expected map
 func validateZone(t *testing.T, zone *dns.ManagedZone, expected *dns.ManagedZone) {
 	assert.Equal(t, expected.Name, zone.Name)
 	assert.Equal(t, expected.DnsName, zone.DnsName)
+	assert.Equal(t, expected.Visibility, zone.Visibility)
 }
 
 func validateChange(t *testing.T, change *dns.Change, expected *dns.Change) {
@@ -672,33 +695,51 @@ func validateChangeRecord(t *testing.T, record *dns.ResourceRecordSet, expected 
 	assert.Equal(t, expected.Type, record.Type)
 }
 
-func newGoogleProviderZoneOverlap(t *testing.T, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, dryRun bool, records []*endpoint.Endpoint) *GoogleProvider {
+func newGoogleProviderZoneOverlap(t *testing.T, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, zoneTypeFilter provider.ZoneTypeFilter, dryRun bool, records []*endpoint.Endpoint) *GoogleProvider {
 	provider := &GoogleProvider{
 		project:                  "zalando-external-dns-test",
 		dryRun:                   false,
 		domainFilter:             domainFilter,
 		zoneIDFilter:             zoneIDFilter,
+		zoneTypeFilter:           zoneTypeFilter,
 		resourceRecordSetsClient: &mockResourceRecordSetsClient{},
 		managedZonesClient:       &mockManagedZonesClient{},
 		changesClient:            &mockChangesClient{},
 	}
 
 	createZone(t, provider, &dns.ManagedZone{
-		Name:    "internal-1",
-		DnsName: "cluster.local.",
-		Id:      10001,
+		Name:       "internal-1",
+		DnsName:    "cluster.local.",
+		Id:         10001,
+		Visibility: "private",
 	})
 
 	createZone(t, provider, &dns.ManagedZone{
-		Name:    "internal-2",
-		DnsName: "cluster.local.",
-		Id:      10002,
+		Name:       "internal-2",
+		DnsName:    "cluster.local.",
+		Id:         10002,
+		Visibility: "private",
 	})
 
 	createZone(t, provider, &dns.ManagedZone{
-		Name:    "internal-3",
-		DnsName: "cluster.local.",
-		Id:      10003,
+		Name:       "internal-3",
+		DnsName:    "cluster.local.",
+		Id:         10003,
+		Visibility: "private",
+	})
+
+	createZone(t, provider, &dns.ManagedZone{
+		Name:       "split-horizon-1",
+		DnsName:    "cluster.local.",
+		Id:         10004,
+		Visibility: "public",
+	})
+
+	createZone(t, provider, &dns.ManagedZone{
+		Name:       "split-horizon-1",
+		DnsName:    "cluster.local.",
+		Id:         10004,
+		Visibility: "private",
 	})
 
 	provider.dryRun = dryRun

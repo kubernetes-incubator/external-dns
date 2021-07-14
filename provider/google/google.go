@@ -110,6 +110,8 @@ type GoogleProvider struct {
 	batchChangeInterval time.Duration
 	// only consider hosted zones managing domains ending in this suffix
 	domainFilter endpoint.DomainFilter
+	// filter for zones based on visibility
+	zoneTypeFilter provider.ZoneTypeFilter
 	// only consider hosted zones ending with this zone id
 	zoneIDFilter provider.ZoneIDFilter
 	// A client for managing resource record sets
@@ -123,7 +125,7 @@ type GoogleProvider struct {
 }
 
 // NewGoogleProvider initializes a new Google CloudDNS based Provider.
-func NewGoogleProvider(ctx context.Context, project string, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, batchChangeSize int, batchChangeInterval time.Duration, dryRun bool) (*GoogleProvider, error) {
+func NewGoogleProvider(ctx context.Context, project string, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, batchChangeSize int, batchChangeInterval time.Duration, zoneVisibility string, dryRun bool) (*GoogleProvider, error) {
 	gcloud, err := google.DefaultClient(ctx, dns.NdevClouddnsReadwriteScope)
 	if err != nil {
 		return nil, err
@@ -149,12 +151,15 @@ func NewGoogleProvider(ctx context.Context, project string, domainFilter endpoin
 		}
 	}
 
+	zoneTypeFilter := provider.NewZoneTypeFilter(zoneVisibility)
+
 	provider := &GoogleProvider{
 		project:                  project,
 		dryRun:                   dryRun,
 		batchChangeSize:          batchChangeSize,
 		batchChangeInterval:      batchChangeInterval,
 		domainFilter:             domainFilter,
+		zoneTypeFilter:           zoneTypeFilter,
 		zoneIDFilter:             zoneIDFilter,
 		resourceRecordSetsClient: resourceRecordSetsService{dnsClient.ResourceRecordSets},
 		managedZonesClient:       managedZonesService{dnsClient.ManagedZones},
@@ -171,11 +176,11 @@ func (p *GoogleProvider) Zones(ctx context.Context) (map[string]*dns.ManagedZone
 
 	f := func(resp *dns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
-			if p.domainFilter.Match(zone.DnsName) && (p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Id)) || p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Name))) {
+			if p.domainFilter.Match(zone.DnsName) && p.zoneTypeFilter.Match(zone.Visibility) && (p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Id)) || p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Name))) {
 				zones[zone.Name] = zone
-				log.Debugf("Matched %s (zone: %s)", zone.DnsName, zone.Name)
+				log.Debugf("Matched %s (zone: %s) (visibility: %s)", zone.DnsName, zone.Name, zone.Visibility)
 			} else {
-				log.Debugf("Filtered %s (zone: %s)", zone.DnsName, zone.Name)
+				log.Debugf("Filtered %s (zone: %s) (visibility: %s)", zone.DnsName, zone.Name, zone.Visibility)
 			}
 		}
 

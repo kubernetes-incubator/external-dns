@@ -26,46 +26,38 @@ import (
 )
 
 func TestZoneTypeFilterMatch(t *testing.T) {
-	publicZone := &route53.HostedZone{Config: &route53.HostedZoneConfig{PrivateZone: aws.Bool(false)}}
-	privateZone := &route53.HostedZone{Config: &route53.HostedZoneConfig{PrivateZone: aws.Bool(true)}}
+	publicZoneStr := "public"
+	privateZoneStr := "private"
+	publicZoneAWS := &route53.HostedZone{Config: &route53.HostedZoneConfig{PrivateZone: aws.Bool(false)}}
+	privateZoneAWS := &route53.HostedZone{Config: &route53.HostedZoneConfig{PrivateZone: aws.Bool(true)}}
 
 	for _, tc := range []struct {
 		zoneTypeFilter string
-		zone           *route53.HostedZone
 		matches        bool
+		zones          []interface{}
 	}{
 		{
-			"", publicZone, true,
+			"", true, []interface{}{ publicZoneStr, privateZoneStr, &route53.HostedZone{} },
 		},
 		{
-			"", privateZone, true,
+			"public", true, []interface{}{ publicZoneStr, publicZoneAWS, &route53.HostedZone{} },
 		},
 		{
-			"public", publicZone, true,
+			"public", false, []interface{}{ privateZoneStr, privateZoneAWS },
 		},
 		{
-			"public", privateZone, false,
+			"private", true, []interface{}{ privateZoneStr, privateZoneAWS },
 		},
 		{
-			"private", publicZone, false,
+			"private", false, []interface{}{ publicZoneStr, publicZoneAWS, &route53.HostedZone{} },
 		},
 		{
-			"private", privateZone, true,
-		},
-		{
-			"unknown", publicZone, false,
-		},
-		{
-			"", &route53.HostedZone{}, true,
-		},
-		{
-			"public", &route53.HostedZone{}, true,
-		},
-		{
-			"private", &route53.HostedZone{}, false,
+			"unknown", false, []interface{}{ publicZoneStr },
 		},
 	} {
 		zoneTypeFilter := NewZoneTypeFilter(tc.zoneTypeFilter)
-		assert.Equal(t, tc.matches, zoneTypeFilter.Match(tc.zone))
+		for _, zone := range tc.zones {
+			assert.Equal(t, tc.matches, zoneTypeFilter.Match(zone))
+		}
 	}
 }

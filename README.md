@@ -139,7 +139,7 @@ The following tutorials are provided:
 * [Dyn](docs/tutorials/dyn.md)
 * [Exoscale](docs/tutorials/exoscale.md)
 * [ExternalName Services](docs/tutorials/externalname.md)
-* Google Container Engine
+* Google Kubernetes Engine
 	* [Using Google's Default Ingress Controller](docs/tutorials/gke.md)
 	* [Using the Nginx Ingress Controller](docs/tutorials/nginx-ingress.md)
 * [Headless Services](docs/tutorials/hostport.md)

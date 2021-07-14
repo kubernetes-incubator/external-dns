@@ -37,24 +37,34 @@ func NewZoneTypeFilter(zoneType string) ZoneTypeFilter {
 }
 
 // Match checks whether a zone matches the zone type that's filtered for.
-func (f ZoneTypeFilter) Match(zone *route53.HostedZone) bool {
+func (f ZoneTypeFilter) Match(rawZoneType interface{}) bool {
 	// An empty zone filter includes all hosted zones.
 	if f.zoneType == "" {
 		return true
 	}
 
-	// If the zone has no config we assume it's a public zone since the config's field
-	// `PrivateZone` is false by default in go.
-	if zone.Config == nil {
-		return f.zoneType == zoneTypePublic
-	}
-
+	switch zoneType := rawZoneType.(type) {
 	// Given a zone type we return true if the given zone matches this type.
-	switch f.zoneType {
-	case zoneTypePublic:
-		return !aws.BoolValue(zone.Config.PrivateZone)
-	case zoneTypePrivate:
-		return aws.BoolValue(zone.Config.PrivateZone)
+	case string:
+		switch f.zoneType {
+		case zoneTypePublic:
+			return zoneType == zoneTypePublic
+		case zoneTypePrivate:
+			return zoneType == zoneTypePrivate
+		}
+	case *route53.HostedZone:
+		// If the zone has no config we assume it's a public zone since the config's field
+		// `PrivateZone` is false by default in go.
+		if zoneType.Config == nil {
+			return f.zoneType == zoneTypePublic
+		}
+
+		switch f.zoneType {
+		case zoneTypePublic:
+			return !aws.BoolValue(zoneType.Config.PrivateZone)
+		case zoneTypePrivate:
+			return aws.BoolValue(zoneType.Config.PrivateZone)
+		}
 	}
 
 	// We return false on any other path, e.g. unknown zone type filter value.
