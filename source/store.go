@@ -231,7 +231,7 @@ func BuildWithConfig(source string, p ClientGenerator, cfg *Config) (Source, err
 		if err != nil {
 			return nil, err
 		}
-		return NewAmbassadorHostSource(dynamicClient, kubernetesClient, cfg.Namespace)
+		return NewAmbassadorHostSource(dynamicClient, kubernetesClient, cfg.Namespace, cfg.AnnotationFilter)
 	case "contour-ingressroute":
 		kubernetesClient, err := p.KubeClient()
 		if err != nil {
