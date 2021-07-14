@@ -45,12 +45,24 @@ type TXTRegistry struct {
 	// registry TXT records corresponding to wildcard records will be invalid (and rejected by most providers), due to
 	// having a '*' appear (not as the first character) - see https://tools.ietf.org/html/rfc1034#section-4.3.3
 	wildcardReplacement string
+
+	// encrypt text records
+	txtEncryptEnabled bool
+	txtEncryptAESKey  []byte
 }
 
 // NewTXTRegistry returns new TXTRegistry object
-func NewTXTRegistry(provider provider.Provider, txtPrefix, txtSuffix, ownerID string, cacheInterval time.Duration, txtWildcardReplacement string) (*TXTRegistry, error) {
+func NewTXTRegistry(provider provider.Provider, txtPrefix, txtSuffix, ownerID string, cacheInterval time.Duration, txtWildcardReplacement string, txtEncryptEnabled bool, txtEncryptAESKey []byte) (*TXTRegistry, error) {
 	if ownerID == "" {
 		return nil, errors.New("owner id cannot be empty")
+	}
+	if len(txtEncryptAESKey) == 0 {
+		txtEncryptAESKey = nil
+	} else if len(txtEncryptAESKey) != 32 {
+		return nil, errors.New("the AES Encryption key must have a length of 32 bytes")
+	}
+	if txtEncryptEnabled && txtEncryptAESKey == nil {
+		return nil, errors.New("the AES Encryption key must be set when TXT record encryption is enabled")
 	}
 
 	if len(txtPrefix) > 0 && len(txtSuffix) > 0 {
@@ -65,6 +77,8 @@ func NewTXTRegistry(provider provider.Provider, txtPrefix, txtSuffix, ownerID st
 		mapper:              mapper,
 		cacheInterval:       cacheInterval,
 		wildcardReplacement: txtWildcardReplacement,
+		txtEncryptEnabled:   txtEncryptEnabled,
+		txtEncryptAESKey:    txtEncryptAESKey,
 	}, nil
 }
 
@@ -98,7 +112,7 @@ func (im *TXTRegistry) Records(ctx context.Context) ([]*endpoint.Endpoint, error
 			continue
 		}
 		// We simply assume that TXT records for the registry will always have only one target.
-		labels, err := endpoint.NewLabelsFromString(record.Targets[0])
+		labels, err := endpoint.NewLabelsFromString(record.Targets[0], im.txtEncryptAESKey)
 		if err == endpoint.ErrInvalidHeritage {
 			//if no heritage is found or it is invalid
 			//case when value of txt record cannot be identified
@@ -154,7 +168,7 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 			r.Labels = make(map[string]string)
 		}
 		r.Labels[endpoint.OwnerLabelKey] = im.ownerID
-		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true, im.txtEncryptEnabled, im.txtEncryptAESKey)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
 		filteredChanges.Create = append(filteredChanges.Create, txt)
 
@@ -164,7 +178,7 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 	}
 
 	for _, r := range filteredChanges.Delete {
-		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true, im.txtEncryptEnabled, im.txtEncryptAESKey)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
 
 		// when we delete TXT records for which value has changed (due to new label) this would still work because
@@ -178,7 +192,7 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 
 	// make sure TXT records are consistently updated as well
 	for _, r := range filteredChanges.UpdateOld {
-		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true, im.txtEncryptEnabled, im.txtEncryptAESKey)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
 		// when we updateOld TXT records for which value has changed (due to new label) this would still work because
 		// !!! TXT record value is uniquely generated from the Labels of the endpoint. Hence old TXT record can be uniquely reconstructed
@@ -191,7 +205,7 @@ func (im *TXTRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) 
 
 	// make sure TXT records are consistently updated as well
 	for _, r := range filteredChanges.UpdateNew {
-		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true)).WithSetIdentifier(r.SetIdentifier)
+		txt := endpoint.NewEndpoint(im.mapper.toTXTName(r.DNSName), endpoint.RecordTypeTXT, r.Labels.Serialize(true, im.txtEncryptEnabled, im.txtEncryptAESKey)).WithSetIdentifier(r.SetIdentifier)
 		txt.ProviderSpecific = r.ProviderSpecific
 		filteredChanges.UpdateNew = append(filteredChanges.UpdateNew, txt)
 		// add new version of record to cache

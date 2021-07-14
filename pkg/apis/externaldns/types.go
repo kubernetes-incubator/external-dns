@@ -127,6 +127,8 @@ type Config struct {
 	TXTOwnerID                        string
 	TXTPrefix                         string
 	TXTSuffix                         string
+	TXTEncryptEnabled                 bool
+	TXTEncryptAESKey                  string
 	Interval                          time.Duration
 	MinEventSyncInterval              time.Duration
 	Once                              bool
@@ -253,6 +255,8 @@ var defaultConfig = &Config{
 	TXTCacheInterval:            0,
 	TXTWildcardReplacement:      "",
 	MinEventSyncInterval:        5 * time.Second,
+	TXTEncryptEnabled:           false,
+	TXTEncryptAESKey:            "",
 	Interval:                    time.Minute,
 	Once:                        false,
 	DryRun:                      false,
@@ -481,6 +485,8 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("txt-prefix", "When using the TXT registry, a custom string that's prefixed to each ownership DNS record (optional). Mutual exclusive with txt-suffix!").Default(defaultConfig.TXTPrefix).StringVar(&cfg.TXTPrefix)
 	app.Flag("txt-suffix", "When using the TXT registry, a custom string that's suffixed to the host portion of each ownership DNS record (optional). Mutual exclusive with txt-prefix!").Default(defaultConfig.TXTSuffix).StringVar(&cfg.TXTSuffix)
 	app.Flag("txt-wildcard-replacement", "When using the TXT registry, a custom string that's used instead of an asterisk for TXT records corresponding to wildcard DNS records (optional)").Default(defaultConfig.TXTWildcardReplacement).StringVar(&cfg.TXTWildcardReplacement)
+	app.Flag("txt-encrypt-enabled", "When using the TXT registry, set if TXT records should be encrypted before stored (default: disabled)").BoolVar(&cfg.TXTEncryptEnabled)
+	app.Flag("txt-encrypt-aes-key", "When using the TXT registry, set TXT record decryption and encryption 32 byte aes key (required when --txt-encrypt=true)").Default(defaultConfig.TXTEncryptAESKey).StringVar(&cfg.TXTEncryptAESKey)
 
 	// Flags related to the main control loop
 	app.Flag("txt-cache-interval", "The interval between cache synchronizations in duration format (default: disabled)").Default(defaultConfig.TXTCacheInterval.String()).DurationVar(&cfg.TXTCacheInterval)
