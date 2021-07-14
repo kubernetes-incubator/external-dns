@@ -35,6 +35,8 @@ const (
 	RecordTypeSRV = "SRV"
 	// RecordTypeNS is a RecordType enum value
 	RecordTypeNS = "NS"
+	// RecordTypePTR is a RecordType enum value
+	RecordTypePTR = "PTR"
 )
 
 // TTL is a structure defining the TTL of a DNS record
@@ -149,7 +151,11 @@ func NewEndpoint(dnsName, recordType string, targets ...string) *Endpoint {
 func NewEndpointWithTTL(dnsName, recordType string, ttl TTL, targets ...string) *Endpoint {
 	cleanTargets := make([]string, len(targets))
 	for idx, target := range targets {
-		cleanTargets[idx] = strings.TrimSuffix(target, ".")
+		if recordType == "PTR" {
+			cleanTargets[idx] = target
+		} else {
+			cleanTargets[idx] = strings.TrimSuffix(target, ".")
+		}
 	}
 
 	return &Endpoint{

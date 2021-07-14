@@ -77,7 +77,7 @@ $ build/external-dns --source crd --crd-source-apiversion externaldns.k8s.io/v1a
 
 ### Creating DNS Records
 
-Create the objects of CRD type by filling in the fields of CRD and DNS record would be created accordingly.
+Create the objects of CRD type by filling in the fields of CRD and DNS record would be created accordingly. Currently, the following DNS record types are supported: A, CNAME, TXT, SRV, NS and PTR
 
 ### Example
 
