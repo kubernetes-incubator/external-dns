@@ -60,6 +60,11 @@ func (k *contextKey) String() string { return "provider context value " + k.name
 // type []*endpoint.Endpoint.
 var RecordsContextKey = &contextKey{"records"}
 
+// EndpointsContextKey is a context key. It can be used during loading records
+// from dns provider, for filter by only registered in k8s domains
+// type []*endpoint.Endpoint.
+var EndpointsContextKey = &contextKey{"endpoints"}
+
 // EnsureTrailingDot ensures that the hostname receives a trailing dot if it hasn't already.
 func EnsureTrailingDot(hostname string) string {
 	if net.ParseIP(hostname) != nil {

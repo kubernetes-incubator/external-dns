@@ -134,6 +134,16 @@ type Controller struct {
 
 // RunOnce runs a single iteration of a reconciliation loop.
 func (c *Controller) RunOnce(ctx context.Context) error {
+	endpoints, err := c.Source.Endpoints(ctx)
+	if err != nil {
+		sourceErrorsTotal.Inc()
+		deprecatedSourceErrors.Inc()
+		return err
+	}
+	sourceEndpointsTotal.Set(float64(len(endpoints)))
+
+	ctx = context.WithValue(ctx, provider.EndpointsContextKey, endpoints)
+
 	records, err := c.Registry.Records(ctx)
 	if err != nil {
 		registryErrorsTotal.Inc()
@@ -144,14 +154,7 @@ func (c *Controller) RunOnce(ctx context.Context) error {
 
 	ctx = context.WithValue(ctx, provider.RecordsContextKey, records)
 
-	endpoints, err := c.Source.Endpoints(ctx)
-	if err != nil {
-		sourceErrorsTotal.Inc()
-		deprecatedSourceErrors.Inc()
-		return err
-	}
 	sourceEndpointsTotal.Set(float64(len(endpoints)))
-
 	endpoints = c.Registry.AdjustEndpoints(endpoints)
 
 	plan := &plan.Plan{

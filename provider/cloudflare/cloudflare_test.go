@@ -241,7 +241,7 @@ func AssertActions(t *testing.T, provider *CloudFlareProvider, endpoints []*endp
 		client = provider.Client.(*mockCloudFlareClient)
 	}
 
-	ctx := context.Background()
+	ctx := fillContext(context.Background())
 
 	records, err := provider.Records(ctx)
 
@@ -265,7 +265,7 @@ func AssertActions(t *testing.T, provider *CloudFlareProvider, endpoints []*endp
 		}
 	}
 
-	err = provider.ApplyChanges(context.Background(), changes)
+	err = provider.ApplyChanges(fillContext(context.Background()), changes)
 
 	if err != nil {
 		t.Fatalf("cannot apply changes, %s", err)
@@ -552,13 +552,35 @@ func TestCloudflareZones(t *testing.T) {
 		zoneIDFilter: provider.NewZoneIDFilter([]string{""}),
 	}
 
-	zones, err := provider.Zones(context.Background())
+	zones, err := provider.Zones(fillContext(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, 1, len(zones))
 	assert.Equal(t, "bar.com", zones[0].Name)
+}
+
+func TestFilterByRegisteredDomains(t *testing.T) {
+	Provider := &CloudFlareProvider{
+		Client: NewMockCloudFlareClient(),
+	}
+
+	endpoints := []*endpoint.Endpoint{endpoint.NewEndpoint(
+		"foo.com",
+		endpoint.RecordTypeA,
+		"127.0.0.1",
+	)}
+
+	ctx := context.WithValue(context.Background(), provider.EndpointsContextKey, endpoints)
+
+	zones, err := Provider.Zones(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, len(zones))
+	assert.Equal(t, "foo.com", zones[0].Name)
 }
 
 func TestCloudFlareZonesWithIDFilter(t *testing.T) {
@@ -570,7 +592,7 @@ func TestCloudFlareZonesWithIDFilter(t *testing.T) {
 		zoneIDFilter: provider.NewZoneIDFilter([]string{"001"}),
 	}
 
-	zones, err := provider.Zones(context.Background())
+	zones, err := provider.Zones(fillContext(context.Background()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +610,7 @@ func TestCloudflareRecords(t *testing.T) {
 	provider := &CloudFlareProvider{
 		Client: client,
 	}
-	ctx := context.Background()
+	ctx := fillContext(context.Background())
 
 	records, err := provider.Records(ctx)
 	if err != nil {
@@ -670,7 +692,7 @@ func TestCloudflareApplyChanges(t *testing.T) {
 		DNSName: "foobar.bar.com",
 		Targets: endpoint.Targets{"target-new"},
 	}}
-	err := provider.ApplyChanges(context.Background(), changes)
+	err := provider.ApplyChanges(fillContext(context.Background()), changes)
 
 	if err != nil {
 		t.Errorf("should not fail, %s", err)
@@ -703,7 +725,7 @@ func TestCloudflareApplyChanges(t *testing.T) {
 	changes.UpdateOld = []*endpoint.Endpoint{}
 	changes.UpdateNew = []*endpoint.Endpoint{}
 
-	err = provider.ApplyChanges(context.Background(), changes)
+	err = provider.ApplyChanges(fillContext(context.Background()), changes)
 	if err != nil {
 		t.Errorf("should not fail, %s", err)
 	}
@@ -1029,7 +1051,7 @@ func TestProviderPropertiesIdempotency(t *testing.T) {
 			Client:           client,
 			proxiedByDefault: test.ProviderProxiedByDefault,
 		}
-		ctx := context.Background()
+		ctx := fillContext(context.Background())
 
 		current, err := provider.Records(ctx)
 		if err != nil {
@@ -1083,7 +1105,7 @@ func TestCloudflareComplexUpdate(t *testing.T) {
 	provider := &CloudFlareProvider{
 		Client: client,
 	}
-	ctx := context.Background()
+	ctx := fillContext(context.Background())
 
 	records, err := provider.Records(ctx)
 
@@ -1114,7 +1136,7 @@ func TestCloudflareComplexUpdate(t *testing.T) {
 
 	planned := plan.Calculate()
 
-	err = provider.ApplyChanges(context.Background(), planned.Changes)
+	err = provider.ApplyChanges(fillContext(context.Background()), planned.Changes)
 
 	if err != nil {
 		t.Errorf("should not fail, %s", err)
@@ -1171,7 +1193,7 @@ func TestCustomTTLWithEnabledProxyNotChanged(t *testing.T) {
 		Client: client,
 	}
 
-	records, err := provider.Records(context.Background())
+	records, err := provider.Records(fillContext(context.Background()))
 
 	if err != nil {
 		t.Errorf("should not fail, %s", err)
@@ -1208,4 +1230,18 @@ func TestCustomTTLWithEnabledProxyNotChanged(t *testing.T) {
 	assert.Equal(t, 0, len(planned.Changes.UpdateNew), "no new changes should be here")
 	assert.Equal(t, 0, len(planned.Changes.UpdateOld), "no new changes should be here")
 	assert.Equal(t, 0, len(planned.Changes.Delete), "no new changes should be here")
+}
+
+func fillContext(ctx context.Context) context.Context {
+	endpoints := []*endpoint.Endpoint{endpoint.NewEndpoint(
+		"foo.com",
+		endpoint.RecordTypeA,
+		"127.0.0.1",
+	), endpoint.NewEndpoint(
+		"bar.com",
+		endpoint.RecordTypeA,
+		"127.0.0.1",
+	)}
+
+	return context.WithValue(ctx, provider.EndpointsContextKey, endpoints)
 }
