@@ -194,6 +194,33 @@ func testNodeSourceEndpoints(t *testing.T) {
 			true,
 		},
 		{
+			"node with both IPv4 and IPv6 addresses results in both A and AAAA records",
+			"",
+			"",
+			"node1",
+			[]v1.NodeAddress{{Type: v1.NodeInternalIP, Address: "2.3.4.5"}, {Type: v1.NodeInternalIP, Address: "2::5"}},
+			map[string]string{},
+			map[string]string{},
+			[]*endpoint.Endpoint{
+				{RecordType: "A", DNSName: "node1", Targets: endpoint.Targets{"2.3.4.5"}},
+				{RecordType: "AAAA", DNSName: "node1", Targets: endpoint.Targets{"2::5"}},
+			},
+			false,
+		},
+		{
+			"node with only IPv6 addresses results in only AAAA records",
+			"",
+			"",
+			"node1",
+			[]v1.NodeAddress{{Type: v1.NodeInternalIP, Address: "1::1"}, {Type: v1.NodeInternalIP, Address: "2::5"}},
+			map[string]string{},
+			map[string]string{},
+			[]*endpoint.Endpoint{
+				{RecordType: "AAAA", DNSName: "node1", Targets: endpoint.Targets{"1::1", "2::5"}},
+			},
+			false,
+		},
+		{
 			"annotated node without annotation filter returns endpoint",
 			"",
 			"",

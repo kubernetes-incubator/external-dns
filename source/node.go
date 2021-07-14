@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"text/template"
 	"time"
@@ -105,7 +106,7 @@ func (ns *nodeSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, erro
 		return nil, err
 	}
 
-	endpoints := map[string]*endpoint.Endpoint{}
+	endpoints := map[string]map[string]*endpoint.Endpoint{}
 
 	// create endpoints for all nodes
 	for _, node := range nodes {
@@ -124,11 +125,7 @@ func (ns *nodeSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, erro
 			log.Warn(err)
 		}
 
-		// create new endpoint with the information we already have
-		ep := &endpoint.Endpoint{
-			RecordType: "A", // hardcoded DNS record type
-			RecordTTL:  ttl,
-		}
+		var dnsName string
 
 		if ns.fqdnTemplate != nil {
 			// Process the whole template string
@@ -138,10 +135,10 @@ func (ns *nodeSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, erro
 				return nil, fmt.Errorf("failed to apply template on node %s: %v", node.Name, err)
 			}
 
-			ep.DNSName = buf.String()
-			log.Debugf("applied template for %s, converting to %s", node.Name, ep.DNSName)
+			dnsName = buf.String()
+			log.Debugf("applied template for %s, converting to %s", node.Name, dnsName)
 		} else {
-			ep.DNSName = node.Name
+			dnsName = node.Name
 			log.Debugf("not applying template for %s", node.Name)
 		}
 
@@ -150,20 +147,57 @@ func (ns *nodeSource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, erro
 			return nil, fmt.Errorf("failed to get node address from %s: %s", node.Name, err.Error())
 		}
 
-		ep.Targets = endpoint.Targets(addrs)
-		ep.Labels = endpoint.NewLabels()
+		// Categorize node addresses by necessary record type
+		var v4Addrs endpoint.Targets
+		var v6Addrs endpoint.Targets
+		for _, addr := range addrs {
+			if isIPv6String(addr) {
+				v6Addrs = append(v6Addrs, addr)
+			} else {
+				v4Addrs = append(v4Addrs, addr)
+			}
+		}
 
-		log.Debugf("adding endpoint %s", ep)
-		if _, ok := endpoints[ep.DNSName]; ok {
-			endpoints[ep.DNSName].Targets = append(endpoints[ep.DNSName].Targets, ep.Targets...)
-		} else {
-			endpoints[ep.DNSName] = ep
+		var nodeEps []*endpoint.Endpoint
+		if len(v4Addrs) > 0 {
+			nodeEps = append(nodeEps, &endpoint.Endpoint{
+				DNSName:    dnsName,
+				RecordType: "A",
+				RecordTTL:  ttl,
+				Targets:    v4Addrs,
+			})
+		}
+		if len(v6Addrs) > 0 {
+			nodeEps = append(nodeEps, &endpoint.Endpoint{
+				DNSName:    dnsName,
+				RecordType: "AAAA",
+				RecordTTL:  ttl,
+				Targets:    v6Addrs,
+			})
+		}
+
+		for _, ep := range nodeEps {
+			ep.Labels = endpoint.NewLabels()
+
+			log.Debugf("adding endpoint %s", ep)
+			if typeMap, ok := endpoints[ep.DNSName]; ok {
+				if _, ok := typeMap[ep.RecordType]; ok {
+					typeMap[ep.RecordType].Targets = append(typeMap[ep.RecordType].Targets, ep.Targets...)
+				} else {
+					typeMap[ep.RecordType] = ep
+				}
+			} else {
+				endpoints[ep.DNSName] = make(map[string]*endpoint.Endpoint)
+				endpoints[ep.DNSName][ep.RecordType] = ep
+			}
 		}
 	}
 
 	endpointsSlice := []*endpoint.Endpoint{}
-	for _, ep := range endpoints {
-		endpointsSlice = append(endpointsSlice, ep)
+	for _, epType := range endpoints {
+		for _, ep := range epType {
+			endpointsSlice = append(endpointsSlice, ep)
+		}
 	}
 
 	return endpointsSlice, nil
@@ -224,4 +258,10 @@ func (ns *nodeSource) filterByAnnotations(nodes []*v1.Node) ([]*v1.Node, error) 
 	}
 
 	return filteredList, nil
+}
+
+// isIPv6String returns if ip is IPv6.
+func isIPv6String(ip string) bool {
+	netIP := net.ParseIP(ip)
+	return netIP != nil && netIP.To4() == nil
 }
