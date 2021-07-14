@@ -54,6 +54,7 @@ func (suite *ServiceSuite) SetupTest() {
 		false,
 		false,
 		false,
+		false,
 		[]string{},
 		false,
 	)
@@ -145,6 +146,7 @@ func testServiceSourceNewServiceSource(t *testing.T) {
 				ti.fqdnTemplate,
 				false,
 				"",
+				false,
 				false,
 				false,
 				false,
@@ -1281,6 +1283,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				false,
 				false,
 				false,
+				false,
 				tc.serviceTypesFilter,
 				tc.ignoreHostnameAnnotation,
 			)
@@ -1450,6 +1453,7 @@ func testMultipleServicesEndpoints(t *testing.T) {
 				tc.fqdnTemplate,
 				tc.combineFQDNAndAnnotation,
 				tc.compatibility,
+				false,
 				false,
 				false,
 				false,
@@ -1635,6 +1639,7 @@ func TestClusterIpServices(t *testing.T) {
 				false,
 				tc.compatibility,
 				true,
+				false,
 				false,
 				false,
 				[]string{},
@@ -2315,6 +2320,7 @@ func TestServiceSourceNodePortServices(t *testing.T) {
 				true,
 				false,
 				false,
+				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
 			)
@@ -2354,6 +2360,7 @@ func TestHeadlessServices(t *testing.T) {
 		hostnames                []string
 		podsReady                []bool
 		publishNotReadyAddresses bool
+		publishHeadlessRoot      bool
 		expected                 []*endpoint.Endpoint
 		expectError              bool
 	}{
@@ -2380,6 +2387,67 @@ func TestHeadlessServices(t *testing.T) {
 			[]string{"foo-0", "foo-1"},
 			[]bool{true, true},
 			false,
+			false,
+			[]*endpoint.Endpoint{
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
+				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
+			},
+			false,
+		},
+		{
+			"annotated Headless services do not return root if publishHeadlessRoot is not set",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+			},
+			v1.ClusterIPNone,
+			[]string{"1.1.1.1", "1.1.1.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true, true},
+			false,
+			false,
+			[]*endpoint.Endpoint{
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
+				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
+			},
+			false,
+		},
+		{
+			"annotated Headless services returns root if publishHeadlessRoot is set",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+			},
+			v1.ClusterIPNone,
+			[]string{"1.1.1.1", "1.1.1.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true, true},
+			false,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
 				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
@@ -2410,6 +2478,7 @@ func TestHeadlessServices(t *testing.T) {
 			[]string{"foo-0", "foo-1"},
 			[]bool{true, true},
 			false,
+			false,
 			[]*endpoint.Endpoint{},
 			false,
 		},
@@ -2437,10 +2506,10 @@ func TestHeadlessServices(t *testing.T) {
 			[]string{"foo-0", "foo-1"},
 			[]bool{true, true},
 			false,
+			false,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}, RecordTTL: endpoint.TTL(1)},
 				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}, RecordTTL: endpoint.TTL(1)},
-				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}, RecordTTL: endpoint.TTL(1)},
 			},
 			false,
 		},
@@ -2467,14 +2536,14 @@ func TestHeadlessServices(t *testing.T) {
 			[]string{"foo-0", "foo-1"},
 			[]bool{true, false},
 			false,
+			false,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
-				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
 			},
 			false,
 		},
 		{
-			"annotated Headless services return endpoints for all Pod if publishNotReadyAddresses is set",
+			"annotated Headless services return endpoints for all Pod if publishNotReadyAddresses and publishHeadlessRoot is set",
 			"",
 			"testing",
 			"foo",
@@ -2496,6 +2565,7 @@ func TestHeadlessServices(t *testing.T) {
 			[]string{"foo-0", "foo-1"},
 			[]bool{true, false},
 			true,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
 				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
@@ -2504,7 +2574,7 @@ func TestHeadlessServices(t *testing.T) {
 			false,
 		},
 		{
-			"annotated Headless services return endpoints for pods missing hostname",
+			"annotated Headless services return endpoints for pods missing hostname if publishHeadlessRoot is set",
 			"",
 			"testing",
 			"foo",
@@ -2526,13 +2596,14 @@ func TestHeadlessServices(t *testing.T) {
 			[]string{"", ""},
 			[]bool{true, true},
 			false,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
 			},
 			false,
 		},
 		{
-			"annotated Headless services return only a unique set of targets",
+			"annotated Headless services return only a unique set of targets if publishHeadlessRoot is set",
 			"",
 			"testing",
 			"foo",
@@ -2554,6 +2625,7 @@ func TestHeadlessServices(t *testing.T) {
 			[]string{"", "", ""},
 			[]bool{true, true, true},
 			false,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
 			},
@@ -2643,6 +2715,7 @@ func TestHeadlessServices(t *testing.T) {
 				tc.compatibility,
 				true,
 				false,
+				tc.publishHeadlessRoot,
 				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
@@ -2684,11 +2757,42 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 		podsReady                []bool
 		targetRefs               []*v1.ObjectReference
 		publishNotReadyAddresses bool
+		publishHeadlessRoot      bool
 		expected                 []*endpoint.Endpoint
 		expectError              bool
 	}{
 		{
-			"annotated Headless services return endpoints for each selected Pod",
+			"annotated Headless services do not return root if publishHeadlessRoot is not set",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+			},
+			v1.ClusterIPNone,
+			[]string{"1.1.1.1", "1.1.1.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true, true},
+			false,
+			false,
+			[]*endpoint.Endpoint{
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
+				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
+			},
+			false,
+		},
+		{
+			"annotated Headless services return root if publishHeadlessRoot is set",
 			"",
 			"testing",
 			"foo",
@@ -2714,6 +2818,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				{APIVersion: "", Kind: "Pod", Name: "foo-1"},
 			},
 			false,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
 				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
@@ -2748,6 +2853,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				{APIVersion: "", Kind: "Pod", Name: "foo-1"},
 			},
 			false,
+			false,
 			[]*endpoint.Endpoint{},
 			false,
 		},
@@ -2779,6 +2885,38 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				{APIVersion: "", Kind: "Pod", Name: "foo-1"},
 			},
 			false,
+			false,
+			[]*endpoint.Endpoint{
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}, RecordTTL: endpoint.TTL(1)},
+				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}, RecordTTL: endpoint.TTL(1)},
+			},
+			false,
+		},
+		{
+			"annotated Headless services return endpoints with TTL for each selected Pod and root if publishHeadlessRoot is set",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+				ttlAnnotationKey:      "1",
+			},
+			v1.ClusterIPNone,
+			[]string{"1.1.1.1", "1.1.1.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true, true},
+			false,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}, RecordTTL: endpoint.TTL(1)},
 				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}, RecordTTL: endpoint.TTL(1)},
@@ -2813,6 +2951,36 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				{APIVersion: "", Kind: "Pod", Name: "foo-1"},
 			},
 			false,
+			false,
+			[]*endpoint.Endpoint{
+				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
+			},
+			false,
+		},
+		{
+			"annotated Headless services return endpoints for each selected Pod, which are in running state, and root if publishHeadlessRoot is set",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			false,
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+			},
+			v1.ClusterIPNone,
+			[]string{"1.1.1.1", "1.1.1.2"},
+			map[string]string{
+				"component": "foo",
+			},
+			[]string{},
+			[]string{"foo-0", "foo-1"},
+			[]string{"foo-0", "foo-1"},
+			[]bool{true, false},
+			false,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
 				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
@@ -2846,15 +3014,15 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				{APIVersion: "", Kind: "Pod", Name: "foo-1"},
 			},
 			true,
+			false,
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Targets: endpoint.Targets{"1.1.1.1"}},
 				{DNSName: "foo-1.service.example.org", Targets: endpoint.Targets{"1.1.1.2"}},
-				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
 			},
 			false,
 		},
 		{
-			"annotated Headless services return endpoints for pods missing hostname",
+			"annotated Headless services with publishHeadlessRoot return endpoints for pods missing hostname",
 			"",
 			"testing",
 			"foo",
@@ -2880,6 +3048,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				{APIVersion: "", Kind: "Pod", Name: "foo-1"},
 			},
 			false,
+			true,
 			[]*endpoint.Endpoint{
 				{DNSName: "service.example.org", Targets: endpoint.Targets{"1.1.1.1", "1.1.1.2"}},
 			},
@@ -2993,6 +3162,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				tc.compatibility,
 				true,
 				true,
+				tc.publishHeadlessRoot,
 				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
@@ -3099,6 +3269,7 @@ func TestExternalServices(t *testing.T) {
 				true,
 				false,
 				false,
+				false,
 				[]string{},
 				tc.ignoreHostnameAnnotation,
 			)
@@ -3141,7 +3312,7 @@ func BenchmarkServiceEndpoints(b *testing.B) {
 	_, err := kubernetes.CoreV1().Services(service.Namespace).Create(context.Background(), service, metav1.CreateOptions{})
 	require.NoError(b, err)
 
-	client, err := NewServiceSource(kubernetes, v1.NamespaceAll, "", "", false, "", false, false, false, []string{}, false)
+	client, err := NewServiceSource(kubernetes, v1.NamespaceAll, "", "", false, "", false, false, false, false, []string{}, false)
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {

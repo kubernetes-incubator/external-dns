@@ -59,6 +59,7 @@ type serviceSource struct {
 	ignoreHostnameAnnotation       bool
 	publishInternal                bool
 	publishHostIP                  bool
+	publishHeadlessRoot            bool
 	alwaysPublishNotReadyAddresses bool
 	serviceInformer                coreinformers.ServiceInformer
 	endpointsInformer              coreinformers.EndpointsInformer
@@ -68,7 +69,7 @@ type serviceSource struct {
 }
 
 // NewServiceSource creates a new serviceSource with the given config.
-func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilter string, fqdnTemplate string, combineFqdnAnnotation bool, compatibility string, publishInternal bool, publishHostIP bool, alwaysPublishNotReadyAddresses bool, serviceTypeFilter []string, ignoreHostnameAnnotation bool) (Source, error) {
+func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilter string, fqdnTemplate string, combineFqdnAnnotation bool, compatibility string, publishInternal bool, publishHostIP bool, publishHeadlessRoot bool, alwaysPublishNotReadyAddresses bool, serviceTypeFilter []string, ignoreHostnameAnnotation bool) (Source, error) {
 	var (
 		tmpl *template.Template
 		err  error
@@ -147,6 +148,7 @@ func NewServiceSource(kubeClient kubernetes.Interface, namespace, annotationFilt
 		ignoreHostnameAnnotation:       ignoreHostnameAnnotation,
 		publishInternal:                publishInternal,
 		publishHostIP:                  publishHostIP,
+		publishHeadlessRoot:            publishHeadlessRoot,
 		alwaysPublishNotReadyAddresses: alwaysPublishNotReadyAddresses,
 		serviceInformer:                serviceInformer,
 		endpointsInformer:              endpointsInformer,
@@ -303,7 +305,10 @@ func (sc *serviceSource) extractHeadlessEndpoints(svc *v1.Service, hostname stri
 				continue
 			}
 
-			headlessDomains := []string{hostname}
+			headlessDomains := []string{}
+			if sc.publishHeadlessRoot {
+				headlessDomains = []string{hostname}
+			}
 			if pod.Spec.Hostname != "" {
 				headlessDomains = append(headlessDomains, fmt.Sprintf("%s.%s", pod.Spec.Hostname, hostname))
 			}

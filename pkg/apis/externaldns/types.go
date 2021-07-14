@@ -61,6 +61,7 @@ type Config struct {
 	Compatibility                     string
 	PublishInternal                   bool
 	PublishHostIP                     bool
+	PublishHeadlessRoot               bool
 	AlwaysPublishNotReadyAddresses    bool
 	ConnectorSourceServer             string
 	Provider                          string
@@ -193,6 +194,7 @@ var defaultConfig = &Config{
 	Compatibility:               "",
 	PublishInternal:             false,
 	PublishHostIP:               false,
+	PublishHeadlessRoot:         false,
 	ConnectorSourceServer:       "localhost:8080",
 	Provider:                    "",
 	GoogleProject:               "",
@@ -368,6 +370,7 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("ignore-ingress-rules-spec", "Ignore rules spec section in ingresses resources, applicable only for ingress sources (optional, default: false)").BoolVar(&cfg.IgnoreIngressRulesSpec)
 	app.Flag("publish-internal-services", "Allow external-dns to publish DNS records for ClusterIP services (optional)").BoolVar(&cfg.PublishInternal)
 	app.Flag("publish-host-ip", "Allow external-dns to publish host-ip for headless services (optional)").BoolVar(&cfg.PublishHostIP)
+	app.Flag("publish-headless-root", "Allow external-dns to publish address records for roots of headless services (optional)").BoolVar(&cfg.PublishHeadlessRoot)
 	app.Flag("always-publish-not-ready-addresses", "Always publish also not ready addresses for headless services (optional)").BoolVar(&cfg.AlwaysPublishNotReadyAddresses)
 	app.Flag("connector-source-server", "The server to connect for connector source, valid only when using connector source").Default(defaultConfig.ConnectorSourceServer).StringVar(&cfg.ConnectorSourceServer)
 	app.Flag("crd-source-apiversion", "API version of the CRD for crd source, e.g. `externaldns.k8s.io/v1alpha1`, valid only when using crd source").Default(defaultConfig.CRDSourceAPIVersion).StringVar(&cfg.CRDSourceAPIVersion)
