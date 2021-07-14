@@ -25,6 +25,7 @@ import (
 
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/internal/testutils"
+	"sigs.k8s.io/external-dns/pkg/apis/externaldns"
 	"sigs.k8s.io/external-dns/plan"
 	"sigs.k8s.io/external-dns/provider"
 	"sigs.k8s.io/external-dns/registry"
@@ -119,6 +120,8 @@ func newMockProvider(endpoints []*endpoint.Endpoint, changes *plan.Changes) prov
 func TestRunOnce(t *testing.T) {
 	// Fake some desired endpoints coming from our source.
 	source := new(testutils.MockSource)
+	cfg := externaldns.NewConfig()
+	cfg.ManagedDNSRecordTypes = []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME}
 	source.On("Endpoints").Return([]*endpoint.Endpoint{
 		{
 			DNSName:    "create-record",
@@ -167,9 +170,10 @@ func TestRunOnce(t *testing.T) {
 
 	// Run our controller once to trigger the validation.
 	ctrl := &Controller{
-		Source:   source,
-		Registry: r,
-		Policy:   &plan.SyncPolicy{},
+		Source:             source,
+		Registry:           r,
+		Policy:             &plan.SyncPolicy{},
+		ManagedRecordTypes: cfg.ManagedDNSRecordTypes,
 	}
 
 	assert.NoError(t, ctrl.RunOnce(context.Background()))
